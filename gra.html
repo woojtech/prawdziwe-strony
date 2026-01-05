@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <title>Kliknij piłkę — prosta gra</title>
+  <style>
+    html,body{height:100%;margin:0;font-family:sans-serif;display:flex;align-items:center;justify-content:center;background:#eef;}
+    #game{position:relative;width:600px;height:400px;background:#fff;border:2px solid #ccc;border-radius:8px;box-shadow:0 4px 10px rgba(0,0,0,.1);overflow:hidden}
+    /* teraz używamy transform (lepsza wydajność) i płynnej transition */
+    #ball{position:absolute;left:0;top:0;width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,#ff6b6b 60%);cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,.2);transition:transform 0.4s ease;will-change:transform}
+    #hud{position:absolute;left:8px;top:8px;font-weight:700}
+    #controls{position:absolute;right:8px;top:8px}
+    button{padding:6px 10px;border-radius:6px;border:1px solid #bbb;background:#fafafa;cursor:pointer}
+    /* podsumowanie (overlay) */
+    .summary{position:absolute;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center}
+    .summary .box{background:#fff;padding:18px 22px;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.2);text-align:center;min-width:280px}
+    .summary h2{margin:0 0 8px;font-size:20px}
+    .summary p{margin:6px 0 12px;font-weight:700}
+    .hidden{display:none}
+  </style>
+</head>
+<body>
+  <div id="game">
+    <div id="hud">Punkty: <span id="score">0</span> | Czas: <span id="time">20</span>s</div>
+    <div id="controls">
+      <button id="start">Start</button>
+      <button id="reset">Reset</button>
+    </div>
+    <!-- ustawione na (0,0) i poruszane przez transform -->
+    <div id="ball" style="left:0;top:0;"></div>
+
+    <!-- Podsumowanie gry -->
+    <div id="summary" class="summary hidden" aria-hidden="true">
+      <div class="box" role="dialog" aria-modal="true" aria-labelledby="summaryTitle">
+        <h2 id="summaryTitle">Podsumowanie</h2>
+        <p>Twój wynik: <span id="summaryScore">0</span></p>
+        <div>
+          <button id="replay">Zagraj ponownie</button>
+          <button id="closeSummary">Zamknij</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ball = document.getElementById('ball');
+    const scoreEl = document.getElementById('score');
+    const timeEl = document.getElementById('time');
+    const startBtn = document.getElementById('start');
+    const resetBtn = document.getElementById('reset');
+    const game = document.getElementById('game');
+
+    const summary = document.getElementById('summary');
+    const summaryScore = document.getElementById('summaryScore');
+    const replayBtn = document.getElementById('replay');
+    const closeSummaryBtn = document.getElementById('closeSummary');
+
+    let score = 0;
+    let timeLeft = 20;
+    let running = false;
+    let timerId = null;
+    let moveIntervalId = null;
+    let moveDelay = 700; // ms
+
+    function rand(min,max){ return Math.random()*(max-min)+min; }
+
+    // placeBall ustawia transform, dzięki czemu ruch jest płynny (CSS transition)
+    function placeBall() {
+      const gw = game.clientWidth - ball.clientWidth;
+      const gh = game.clientHeight - ball.clientHeight;
+      const x = Math.round(rand(0, gw));
+      const y = Math.round(rand(0, gh));
+      ball.style.transform = `translate(${x}px, ${y}px)`;
+    }
+
+    function setMoveDelay(d){
+      moveDelay = d;
+      // transition duration powiązane z interwałem (krótszy interwał -> krótszy czas animacji)
+      const dur = Math.max(0.06, d * 0.85 / 1000); // sekundy
+      ball.style.transitionDuration = dur + 's';
+      // reset interval - URUCHAMIAJ TYLKO GDY GRA JEST WŁĄCZONA
+      clearInterval(moveIntervalId);
+      if (running) {
+        moveIntervalId = setInterval(placeBall, moveDelay);
+      } else {
+        moveIntervalId = null;
+      }
+    }
+
+    function hideSummary(){
+      summary.classList.add('hidden');
+      summary.setAttribute('aria-hidden','true');
+    }
+    function showSummary(finalScore){
+      summaryScore.textContent = finalScore;
+      summary.classList.remove('hidden');
+      summary.setAttribute('aria-hidden','false');
+    }
+
+    function startGame(){
+      if(running) return;
+      hideSummary();
+      running = true;
+      score = 0; timeLeft = 20;
+      scoreEl.textContent = score;
+      timeEl.textContent = timeLeft;
+      placeBall();
+      clearInterval(moveIntervalId);
+      clearInterval(timerId);
+      setMoveDelay(700);
+      timerId = setInterval(()=>{
+        timeLeft--;
+        timeEl.textContent = timeLeft;
+        if(timeLeft <= 0) endGame();
+      }, 1000);
+    }
+
+    function endGame(){
+      running = false;
+      clearInterval(timerId);
+      clearInterval(moveIntervalId);
+      showSummary(score);
+    }
+
+    ball.addEventListener('click', (e)=>{
+      if(!running) return;
+      score++;
+      scoreEl.textContent = score;
+      // natychmiast przenieś piłkę do nowego miejsca (animacja via transition)
+      placeBall();
+      // przyspiesz ruch - skróć opóźnienie i dopasuj transition
+      const nextDelay = Math.max(200, 700 - score*20);
+      setMoveDelay(nextDelay);
+    });
+
+    startBtn.addEventListener('click', startGame);
+    resetBtn.addEventListener('click', ()=>{
+      clearInterval(timerId); clearInterval(moveIntervalId);
+      running = false;
+      score = 0; timeLeft = 20;
+      scoreEl.textContent = score;
+      timeEl.textContent = timeLeft;
+      // przywróć domyślny delay i pozycję
+      setMoveDelay(700);
+      placeBall();
+      hideSummary();
+    });
+
+    replayBtn.addEventListener('click', ()=>{
+      hideSummary();
+      startGame();
+    });
+    closeSummaryBtn.addEventListener('click', ()=>{
+      hideSummary();
+    });
+
+    // ustaw początkową pozycję i interval
+    placeBall();
+    setMoveDelay(700);
+    window.addEventListener('resize', ()=>{ if(!running) placeBall(); });
+  </script>
+</body>
+</html>
