@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <title>Ping Pong</title>
+  <style>
+    html,body{height:100%;margin:0;display:flex;align-items:center;justify-content:center;background:#111;color:#ddd;font-family:sans-serif}
+    #game{background:#000;border:4px solid #222;display:block}
+    #ui{position:fixed;top:12px;left:12px}
+    .hint{font-size:14px;opacity:.8}
+
+    .summary{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center}
+    .summary .box{background:#111;color:#fff;padding:18px 22px;border-radius:8px;border:1px solid #333;text-align:center;min-width:260px}
+    .summary h2{margin:0 0 8px;font-size:20px}
+    .summary p{margin:8px 0 12px;font-weight:700}
+    .hidden{display:none}
+
+    /* menu (reuses summary layout) */
+    #menu .box{min-width:320px}
+    #menu button{margin:6px;border-radius:6px;padding:8px 12px;border:1px solid #444;background:#222;color:#fff;cursor:pointer}
+    #menu .small{font-size:13px;opacity:0.85;margin-top:8px}
+
+    /* settings */
+    #settings .row{display:flex;align-items:center;justify-content:space-between;margin:8px 0}
+    #settings label{flex:1;margin-right:8px}
+    #settings input[type="range"]{width:140px}
+    #settings .preset{margin:4px}
+    #menu .controls{display:flex;gap:8px;flex-direction:column}
+  </style>
+</head>
+<body>
+  <canvas id="game" width="900" height="500"></canvas>
+  <div id="ui" class="hint">
+    Sterowanie: lewy gracz W/S, prawy góra/dół. R - reset. <span id="modeHint">Tryb: —</span><br>
+    Wynik: <span id="score">0 : 0</span>
+  </div>
+
+  <!-- Main menu -->
+  <div id="menu" class="summary" aria-hidden="false">
+    <div class="box" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+      <h2 id="menuTitle">Ping Pong — Menu główne</h2>
+      <div style="margin:12px 0;" class="controls">
+        <div>
+          <button id="btnPvP">Zagraj: Gracz vs Gracz</button>
+          <button id="btnAI">Zagraj: Gracz vs AI</button>
+        </div>
+        <div>
+          <button id="btnSettings">Ustawienia</button>
+        </div>
+      </div>
+      <div class="small">Sterowanie: lewy W/S, prawy strzałki. Spacja — pauza. M lub Esc — menu.</div>
+    </div>
+  </div>
+
+  <!-- Settings overlay -->
+  <div id="settings" class="summary hidden" aria-hidden="true">
+    <div class="box" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <h2 id="settingsTitle">Ustawienia</h2>
+
+      <div class="row">
+        <label for="bgPreset">Tło</label>
+        <select id="bgPreset">
+          <option value="black">Czarne</option>
+          <option value="gradient">Gradient</option>
+          <option value="image1">Obraz 1</option>
+          <option value="image2">Obraz 2</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label for="movementSmoothing">Płynne poruszanie</label>
+        <input id="movementSmoothing" type="checkbox">
+      </div>
+
+      <div class="row">
+        <label for="mouseControl">Sterowanie myszką (paletka prawa)</label>
+        <input id="mouseControl" type="checkbox">
+      </div>
+
+      <div class="row">
+        <label for="mouseControlLeft">Sterowanie myszką (paletka lewa)</label>
+        <input id="mouseControlLeft" type="checkbox">
+      </div>
+      
+      <div class="row">
+        <label for="playerSpeed">Szybkość graczy</label>
+        <input id="playerSpeed" type="range" min="3" max="12" value="6">
+      </div>
+
+      <div style="margin-top:8px;text-align:left">Trudność AI</div>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <label><input type="radio" name="aiDiff" value="easy"> Łatwy</label>
+        <label><input type="radio" name="aiDiff" value="normal" checked> Normalny</label>
+        <label><input type="radio" name="aiDiff" value="hard"> Trudny</label>
+      </div>
+
+      <div style="margin-top:12px">
+        <button id="applySettings">Zastosuj</button>
+        <button id="cancelSettings">Anuluj</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary overlay -->
+  <div id="summary" class="summary hidden" aria-hidden="true">
+    <div class="box" role="dialog" aria-modal="true" aria-labelledby="summaryTitle">
+      <h2 id="summaryTitle">Koniec gry</h2>
+      <p>Wynik: <span id="finalScore">0 : 0</span></p>
+      <div style="margin-top:8px">
+        <button id="replay">Zagraj ponownie</button>
+        <button id="closeSummary">Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // Prosty ping-pong w jednym pliku
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const modeHint = document.getElementById('modeHint');
+
+  const W = canvas.width, H = canvas.height;
+
+  const paddle = (x) => ({ x, y: H/2 - 50, w: 12, h: 100, vy: 0, speed: 6 });
+
+  let left = paddle(30);
+  let right = paddle(W - 30 - 12);
+  let ball = { x: W/2, y: H/2, r: 8, vx: 6*(Math.random()<0.5?1:-1), vy: 3*(Math.random()<0.5?1:-1) };
+
+  let score = { l: 0, r: 0 };
+  let keys = {};
+  let useAI = false;
+
+  // settings state
+  let settingsState = {
+    bg: 'black',
+    smoothing: false,
+    playerSpeed: 6,
+    mouseControl: false,
+    mouseControlLeft: false,
+    aiDifficulty: 'normal'
+  };
+
+  // AI tuning (updated by applySettings)
+  let aiParams = { followSpeed: 4, error: 18 }; // default normal
+  // mouse tracking
+  let mouseY = 0;
+  let mouseX = 0;
+  let mouseInside = false;
+
+  // start paused until mode chosen
+  let running = false;
+  const goalLimit = 5;
+
+  const menu = document.getElementById('menu');
+  const btnPvP = document.getElementById('btnPvP');
+  const btnAI = document.getElementById('btnAI');
+  const btnSettings = document.getElementById('btnSettings');
+
+  const settings = document.getElementById('settings');
+  const bgPreset = document.getElementById('bgPreset');
+  const movementSmoothing = document.getElementById('movementSmoothing');
+  const mouseControl = document.getElementById('mouseControl');
+  const mouseControlLeft = document.getElementById('mouseControlLeft');
+  const playerSpeed = document.getElementById('playerSpeed');
+  const applySettingsBtn = document.getElementById('applySettings');
+  const cancelSettingsBtn = document.getElementById('cancelSettings');
+
+  const summary = document.getElementById('summary');
+  const finalScoreEl = document.getElementById('finalScore');
+  const replayBtn = document.getElementById('replay');
+  const closeSummaryBtn = document.getElementById('closeSummary');
+
+  function resetBall(servingToRight=true){
+    ball.x = W/2; ball.y = H/2;
+    const speed = 6;
+    ball.vx = speed * (servingToRight ? 1 : -1);
+    ball.vy = (Math.random()*4-2);
+  }
+
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+  function showMenu(){
+    menu.classList.remove('hidden');
+    menu.setAttribute('aria-hidden','false');
+    running = false;
+    updateModeHint();
+  }
+  function hideMenu(){
+    menu.classList.add('hidden');
+    menu.setAttribute('aria-hidden','true');
+  }
+
+  function showSettings(){
+    // populate controls from state
+    bgPreset.value = settingsState.bg;
+    movementSmoothing.checked = settingsState.smoothing;
+    mouseControl.checked = settingsState.mouseControl;
+    mouseControlLeft.checked = settingsState.mouseControlLeft;
+    playerSpeed.value = settingsState.playerSpeed;
+    document.querySelectorAll('input[name="aiDiff"]').forEach(r => r.checked = (r.value === settingsState.aiDifficulty));
+    settings.classList.remove('hidden');
+    settings.setAttribute('aria-hidden','false');
+  }
+  function hideSettings(){
+    settings.classList.add('hidden');
+    settings.setAttribute('aria-hidden','true');
+  }
+
+  function showSummary(){
+    finalScoreEl.textContent = score.l + ' : ' + score.r;
+    summary.classList.remove('hidden');
+    summary.setAttribute('aria-hidden','false');
+  }
+  function hideSummary(){
+    summary.classList.add('hidden');
+    summary.setAttribute('aria-hidden','true');
+  }
+  function endGame(){
+    running = false;
+    showSummary();
+  }
+
+  function applySettings(){
+    settingsState.bg = bgPreset.value;
+    settingsState.smoothing = movementSmoothing.checked;
+    settingsState.mouseControl = mouseControl.checked;
+    settingsState.mouseControlLeft = mouseControlLeft.checked;
+    settingsState.playerSpeed = Number(playerSpeed.value);
+    const aiDiff = document.querySelector('input[name="aiDiff"]:checked').value;
+    settingsState.aiDifficulty = aiDiff;
+
+    // apply background
+    switch(settingsState.bg){
+      case 'black':
+        canvas.style.background = '#000';
+        break;
+      case 'gradient':
+        canvas.style.background = 'linear-gradient(120deg,#0b2545,#061b2d)';
+        break;
+      case 'image1':
+        // pomarańczowe tło (gradient)
+        canvas.style.background = 'linear-gradient(120deg,#ff8a00,#ffcf66)';
+        break;
+      case 'image2':
+        // drugi obraz z Unsplash
+        canvas.style.background = "url('https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=900&q=80') center/cover";
+        break;
+    }
+
+    // apply movement speed and smoothing
+    left.speed = right.speed = settingsState.playerSpeed;
+
+    // map AI difficulty to parameters
+    if(aiDiff === 'easy'){ aiParams.followSpeed = 2.2; aiParams.error = 36; }
+    else if(aiDiff === 'normal'){ aiParams.followSpeed = 3.6; aiParams.error = 18; }
+    else if(aiDiff === 'hard'){ aiParams.followSpeed = 5.2; aiParams.error = 8; }
+
+    hideSettings();
+    updateModeHint();
+  }
+
+  function startGame(withAI){
+    useAI = !!withAI;
+    hideMenu();
+    hideSummary();
+    score = {l:0,r:0};
+    scoreEl.textContent = '0 : 0';
+    resetBall(true);
+    running = true;
+    updateModeHint();
+  }
+
+  function updateModeHint(){
+    modeHint.textContent = 'Tryb: ' + (useAI ? 'Vs AI' : 'PvP') + ' • AI: ' + settingsState.aiDifficulty;
+  }
+
+  window.addEventListener('keydown', e => {
+    keys[e.key.toLowerCase()] = true;
+
+    if(e.key === 'r' || e.key === 'R'){
+      score = {l:0,r:0}; scoreEl.textContent = '0 : 0'; resetBall(true);
+      hideSummary();
+      running = true;
+    }
+
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (menu.classList.contains('hidden') && summary.classList.contains('hidden') && settings.classList.contains('hidden')) {
+        running = !running;
+      }
+    }
+
+    // toggle menu on M or Escape; resume game when hiding menu (if not in summary/settings)
+    if (e.key === 'm' || e.key === 'M' || e.key === 'Escape') {
+      if (menu.classList.contains('hidden')) {
+        showMenu();
+      } else {
+        hideMenu();
+        if (summary.classList.contains('hidden') && settings.classList.contains('hidden')) {
+          running = true;
+        }
+      }
+    }
+  });
+  window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+  btnPvP.addEventListener('click', ()=> startGame(false));
+  btnAI.addEventListener('click', ()=> startGame(true));
+  btnSettings.addEventListener('click', ()=> { showSettings(); });
+
+  applySettingsBtn.addEventListener('click', applySettings);
+  cancelSettingsBtn.addEventListener('click', hideSettings);
+
+  // mouse events to control right paddle when enabled
+  canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    mouseY = e.clientY - r.top;
+    mouseX = e.clientX - r.left;
+  });
+  canvas.addEventListener('mouseenter', ()=> mouseInside = true);
+  canvas.addEventListener('mouseleave', ()=> mouseInside = false);
+
+  function update(){
+    if(!running) return; // do nothing when paused/ended
+
+    // Player controls - support smoothing if enabled
+    if(settingsState.smoothing){
+      // desired targets for left paddle
+      let targetLeft = left.y;
+      if (settingsState.mouseControlLeft && mouseInside && mouseX < W/2) {
+        targetLeft = mouseY - left.h/2;
+      } else {
+        if(keys['w']) targetLeft -= left.speed;
+        if(keys['s']) targetLeft += left.speed;
+      }
+      // use vy as momentum
+      left.vy += (targetLeft - left.y) * 0.2;
+      left.vy = clamp(left.vy, -left.speed*2, left.speed*2);
+      left.y += left.vy;
+  
+      // right player or AI (with mouse support)
+      if(!useAI){
+        let targetRight = right.y;
+        // mouse control takes precedence over keyboard when enabled and cursor is over canvas
+        if (settingsState.mouseControl && mouseInside && mouseX >= W/2) {
+          targetRight = mouseY - right.h/2;
+        } else {
+          if(keys['arrowup']) targetRight -= right.speed;
+          if(keys['arrowdown']) targetRight += right.speed;
+        }
+        right.vy += (targetRight - right.y) * 0.2;
+        right.vy = clamp(right.vy, -right.speed*2, right.speed*2);
+        right.y += right.vy;
+      } else {
+        // AI: follow ball with smoothing + error
+        const noise = Math.sin(Date.now()/350) * (aiParams.error/2) + (Math.random()-0.5)*aiParams.error;
+        const target = (ball.y + noise) - right.h/2;
+        right.vy += (target - right.y) * 0.16 * aiParams.followSpeed/3.6;
+        right.vy = clamp(right.vy, -aiParams.followSpeed*2, aiParams.followSpeed*2);
+        right.y += right.vy;
+      }
+    } else {
+      // instant movement (previous behavior)
+      if (settingsState.mouseControlLeft && mouseInside && mouseX < W/2) {
+        left.y = mouseY - left.h/2;
+      } else {
+        if(keys['w']) left.y -= left.speed;
+        if(keys['s']) left.y += left.speed;
+      }
+      if(!useAI){
+        // mouse control (takes precedence over arrow keys when enabled and cursor is over canvas)
+        if (settingsState.mouseControl && mouseInside && mouseX >= W/2) {
+          const targetRight = mouseY - right.h/2;
+          right.y = targetRight;
+        } else {
+          if(keys['arrowup']) right.y -= right.speed;
+          if(keys['arrowdown']) right.y += right.speed;
+        }
+      } else {
+        // AI follow with error and max step
+        const noise = (Math.sin(Date.now()/350) * (aiParams.error/2)) + (Math.random()-0.5)*aiParams.error;
+        const target = ball.y + noise - right.h/2;
+        const step = aiParams.followSpeed;
+        right.y += clamp(target - right.y, -step, step);
+      }
+    }
+
+    left.y = clamp(left.y, 0, H - left.h);
+    right.y = clamp(right.y, 0, H - right.h);
+
+    // Move ball
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    // Top/bottom collision
+    if(ball.y - ball.r <= 0 || ball.y + ball.r >= H){
+      ball.vy *= -1;
+      ball.y = clamp(ball.y, ball.r, H - ball.r);
+    }
+
+    // Paddle collisions
+    function collidePaddle(p){
+      if(ball.x - ball.r < p.x + p.w && ball.x + ball.r > p.x &&
+         ball.y + ball.r > p.y && ball.y - ball.r < p.y + p.h){
+        const relative = (ball.y - (p.y + p.h/2)) / (p.h/2); // -1..1
+        const speed = Math.hypot(ball.vx, ball.vy);
+        const newVx = Math.abs(speed) * (p === left ? 1 : -1);
+        ball.vx = newVx;
+        ball.vy = speed * relative * 1.2;
+        if(p === left) ball.x = p.x + p.w + ball.r + 0.1;
+        else ball.x = p.x - ball.r - 0.1;
+        ball.vx *= 1.05;
+        ball.vy *= 1.05;
+      }
+    }
+    collidePaddle(left);
+    collidePaddle(right);
+
+    // Score
+    if(ball.x < 0){
+      score.r += 1;
+      scoreEl.textContent = score.l + ' : ' + score.r;
+      if(score.r >= goalLimit){ endGame(); return; }
+      resetBall(true);
+    } else if(ball.x > W){
+      score.l += 1;
+      scoreEl.textContent = score.l + ' : ' + score.r;
+      if(score.l >= goalLimit){ endGame(); return; }
+      resetBall(false);
+    }
+  }
+
+  function draw(){
+    // background already applied to canvas.style.background
+    if(!canvas.style.background) canvas.style.background = '#000';
+    ctx.clearRect(0,0,W,H);
+
+    // center dashed line
+    ctx.strokeStyle = '#444';
+    ctx.setLineDash([10,10]);
+    ctx.beginPath();
+    ctx.moveTo(W/2,0); ctx.lineTo(W/2,H); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // paddles
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(left.x, left.y, left.w, left.h);
+    ctx.fillRect(right.x, right.y, right.w, right.h);
+
+    // ball
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
+    ctx.fill();
+
+    // scores (big)
+    ctx.fillStyle = '#666';
+    ctx.font = '48px monospace';
+    ctx.fillText(score.l, W*0.25 - 10, 60);
+    ctx.fillText(score.r, W*0.75 - 10, 60);
+
+    // draw PAUZA overlay when paused (but not after game end or when menu visible)
+    if (!running && summary.classList.contains('hidden') && menu.classList.contains('hidden') && settings.classList.contains('hidden')) {
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#fff';
+      ctx.font = '64px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('PAUZA', W/2, H/2);
+      ctx.textAlign = 'start';
+      ctx.textBaseline = 'alphabetic';
+    }
+  }
+
+  function loop(){
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // Start paused; show menu
+  resetBall(true);
+  showMenu();
+  loop();
+
+  // summary buttons
+  replayBtn.addEventListener('click', ()=>{
+    hideSummary();
+    startGame(useAI); // restart with current mode
+  });
+  closeSummaryBtn.addEventListener('click', ()=>{
+    hideSummary();
+    showMenu(); // go back to menu
+  });
+
+  // initialize default settings
+  applySettings(); // applies defaults to canvas and AI params
+  </script>
+</body>
+</html>
