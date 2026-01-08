@@ -118,14 +118,30 @@
     function spawnStars(n){
       state.stars = [];
       for(let i=0;i<n;i++){
-        state.stars.push({ x: rand(20,620), y: rand(20,460), r: 8 });
+        state.stars.push({ x: rand(20,canvas.width-20), y: rand(20,canvas.height-20), r: 8 });
       }
     }
-    function spawnEnemies(n, speed){
+
+    // Helper: losowa pozycja oddalona co najmniej minDist od gracza (próby z limitem)
+    function randomPosAwayFromPlayer(minDist){
+      const margin = 20;
+      for(let tries=0; tries<50; tries++){
+        const x = rand(margin, canvas.width - margin);
+        const y = rand(margin, canvas.height - margin);
+        const dx = x - state.player.x;
+        const dy = y - state.player.y;
+        if(Math.hypot(dx, dy) >= minDist) return { x, y };
+      }
+      // Jeśli nie uda się po wielu próbach, zwróć pozycję losową (rzadkie)
+      return { x: rand(margin, canvas.width - margin), y: rand(margin, canvas.height - margin) };
+    }
+
+    function spawnEnemies(n, speed, minDistFromPlayer = 100){
       state.enemies = [];
       for(let i=0;i<n;i++){
+        const pos = randomPosAwayFromPlayer(minDistFromPlayer);
         state.enemies.push({
-          x: rand(20,620), y: rand(20,460),
+          x: pos.x, y: pos.y,
           vx: rand(-speed,speed), vy: rand(-speed,speed),
           r: 14
         });
@@ -143,7 +159,7 @@
       state.paused = false;
       pauseBtn.textContent = 'Pauza';
       spawnStars(cfg.stars);
-      spawnEnemies(cfg.enemies, cfg.enemySpeed);
+      spawnEnemies(cfg.enemies, cfg.enemySpeed, 100);
       scoreEl.textContent = state.score;
       menu.style.display = 'none';
       gameOverDiv.style.display = 'none';
@@ -251,14 +267,15 @@
           if(state.score % 3 === 0){
             const cfg = DIFFICULTY[state.difficulty];
             const speed = cfg.enemySpeed + state.score * 6;
+            const pos = randomPosAwayFromPlayer(100);
             state.enemies.push({
-              x: rand(20,620), y: rand(20,460),
+              x: pos.x, y: pos.y,
               vx: rand(-speed,speed), vy: rand(-speed,speed), r:14
             });
           }
           // respawn gwiazdki
           if(state.stars.length < 4){
-            state.stars.push({ x: rand(20,620), y: rand(20,460), r:8 });
+            state.stars.push({ x: rand(20,canvas.width-20), y: rand(20,canvas.height-20), r:8 });
           }
         }
       }
