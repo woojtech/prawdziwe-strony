@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <title>Jakas Gra — Zbieracz Gwiazdek</title>
+  <style>
+    /* Prosty styl — plansza po środku */
+    html,body { height:100%; margin:0; display:flex; align-items:center; justify-content:center; background:#111; color:#eee; font-family:Arial, sans-serif;}
+    #game { background:#222; border:4px solid #333; display:block; }
+    .hud { position:fixed; top:10px; left:10px; font-weight:700; }
+    .hint { position:fixed; bottom:10px; left:10px; opacity:0.8; font-size:13px; }
+    button { margin-left:10px; }
+    /* Menu główne */
+    #menu {
+      position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+      background:rgba(0,0,0,0.6); z-index:10;
+    }
+    .menu-box {
+      background:#222; border:2px solid #444; padding:24px; text-align:center; min-width:320px;
+    }
+    .menu-box h1 { margin:0 0 12px 0; font-size:22px; color:#fff; }
+    .menu-box p { margin:8px 0 16px 0; color:#ccc; font-size:14px; }
+    .menu-controls { display:flex; gap:8px; justify-content:center; margin-top:12px; }
+    select, button { padding:8px 10px; background:#333; color:#fff; border:1px solid #555; }
+    /* Overlay przy końcu gry - drobna poprawka aby pokazywać przycisk menu */
+    .game-overlay-btns { margin-top:14px; }
+    /* Game over overlay */
+    #game-over {
+      position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+      background:rgba(0,0,0,0.6); z-index:11;
+    }
+  </style>
+</head>
+<body>
+  <div class="hud">Wynik: <span id="score">0</span>
+    <button id="restart">Restart</button>
+    <button id="pause">Pauza</button>
+  </div>
+
+  <!-- Menu główne -->
+  <div id="menu">
+    <div class="menu-box">
+      <h1>Zbieracz Gwiazdek</h1>
+      <p>Zbieraj gwiazdki, unikaj wrogów. Im więcej zbierzesz, tym trudniej!</p>
+      <label for="difficulty">Trudność:</label>
+      <select id="difficulty">
+        <option value="easy">Łatwa</option>
+        <option value="normal" selected>Normalna</option>
+        <option value="hard">Trudna</option>
+      </select>
+      <div class="menu-controls">
+        <button id="play">Graj</button>
+        <button id="show-instructions">Instrukcje</button>
+      </div>
+      <div id="instructions" style="display:none; margin-top:12px; color:#bbb; font-size:13px; text-align:left;">
+        Sterowanie: strzałki lub WASD. Zbieraj gwiazdki aby zdobywać punkty. Po kolizji z wrogiem - koniec gry.
+      </div>
+    </div>
+  </div>
+
+  <!-- Game over overlay z przyciskami Menu/Restart -->
+  <div id="game-over">
+    <div class="menu-box">
+      <h1>KONIEC GRY</h1>
+      <p>Twój wynik: <strong id="final-score">0</strong></p>
+      <div class="menu-controls game-overlay-btns">
+        <button id="go-menu">Menu</button>
+        <button id="go-restart">Restart</button>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="game" width="640" height="480"></canvas>
+  <div class="hint">Sterowanie: strzałki lub WASD — P: pauza, Esc: menu</div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const restartBtn = document.getElementById('restart');
+    const pauseBtn = document.getElementById('pause');
+
+    const menu = document.getElementById('menu');
+    const playBtn = document.getElementById('play');
+    const instrBtn = document.getElementById('show-instructions');
+    const instrBox = document.getElementById('instructions');
+    const difficultySel = document.getElementById('difficulty');
+
+    const gameOverDiv = document.getElementById('game-over');
+    const finalScoreEl = document.getElementById('final-score');
+    const goMenuBtn = document.getElementById('go-menu');
+    const goRestartBtn = document.getElementById('go-restart');
+
+    const state = {
+      player: { x: 320, y: 240, size: 20, speed: 200 },
+      keys: {},
+      stars: [],
+      enemies: [],
+      score: 0,
+      running: false,    // czy gra działa (ruch)
+      started: false,    // czy gra została uruchomiona z menu
+      paused: false,     // pauza
+      lastTime: 0,
+      difficulty: 'normal'
+    };
+
+    // Utility
+    function rand(min, max){ return Math.random()*(max-min)+min; }
+    function dist(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return Math.hypot(dx,dy); }
+
+    // Tworzenie obiektów z parametrami trudności
+    const DIFFICULTY = {
+      easy:   { stars:6, enemies:1, enemySpeed: 60 },
+      normal: { stars:6, enemies:2, enemySpeed: 100 },
+      hard:   { stars:5, enemies:3, enemySpeed: 140 }
+    };
+
+    function spawnStars(n){
+      state.stars = [];
+      for(let i=0;i<n;i++){
+        state.stars.push({ x: rand(20,620), y: rand(20,460), r: 8 });
+      }
+    }
+    function spawnEnemies(n, speed){
+      state.enemies = [];
+      for(let i=0;i<n;i++){
+        state.enemies.push({
+          x: rand(20,620), y: rand(20,460),
+          vx: rand(-speed,speed), vy: rand(-speed,speed),
+          r: 14
+        });
+      }
+    }
+
+    function startGame(difficulty){
+      state.difficulty = difficulty || state.difficulty;
+      const cfg = DIFFICULTY[state.difficulty];
+      state.player.x = canvas.width/2;
+      state.player.y = canvas.height/2;
+      state.score = 0;
+      state.running = true;
+      state.started = true;
+      state.paused = false;
+      pauseBtn.textContent = 'Pauza';
+      spawnStars(cfg.stars);
+      spawnEnemies(cfg.enemies, cfg.enemySpeed);
+      scoreEl.textContent = state.score;
+      menu.style.display = 'none';
+      gameOverDiv.style.display = 'none';
+    }
+
+    function showMenu(){
+      state.running = false;
+      state.started = false;
+      state.paused = false;
+      pauseBtn.textContent = 'Pauza';
+      menu.style.display = 'flex';
+      gameOverDiv.style.display = 'none';
+    }
+
+    function showGameOver(){
+      state.running = false;
+      state.paused = false;
+      pauseBtn.textContent = 'Pauza';
+      finalScoreEl.textContent = state.score;
+      gameOverDiv.style.display = 'flex';
+      state.started = true;
+    }
+
+    function togglePause(){
+      if(!state.started) return; // pauza tylko dla uruchomionej gry
+      state.paused = !state.paused;
+      pauseBtn.textContent = state.paused ? 'Wznów' : 'Pauza';
+    }
+
+    // Wejście
+    window.addEventListener('keydown', e => {
+      const key = e.key.toLowerCase();
+      if (key === 'escape') {
+        // Esc otwiera menu główne
+        showMenu();
+        e.preventDefault();
+        return;
+      }
+      if (key === 'p') {
+        togglePause();
+        e.preventDefault();
+        return;
+      }
+      state.keys[key] = true;
+    });
+    window.addEventListener('keyup', e => {
+      const key = e.key.toLowerCase();
+      if (key === 'escape' || key === 'p') return;
+      state.keys[key] = false;
+    });
+    restartBtn.addEventListener('click', () => {
+      // jeśli gra nie była uruchomiona, otwórz menu; w przeciwnym razie restartuj przy aktualnej trudności
+      if(!state.started) { showMenu(); }
+      else startGame(state.difficulty);
+    });
+    pauseBtn.addEventListener('click', togglePause);
+
+    playBtn.addEventListener('click', () => startGame(difficultySel.value));
+    instrBtn.addEventListener('click', () => {
+      instrBox.style.display = instrBox.style.display === 'none' ? 'block' : 'none';
+    });
+
+    // obsługa przycisków w overlay koniec gry
+    goMenuBtn.addEventListener('click', () => showMenu());
+    goRestartBtn.addEventListener('click', () => startGame(state.difficulty));
+
+    // Aktualizacja logiki
+    function update(dt){
+      if(!state.running || state.paused) return;
+
+      // ruch gracza
+      const p = state.player;
+      let dx=0, dy=0;
+      if(state.keys['arrowleft'] || state.keys['a']) dx -= 1;
+      if(state.keys['arrowright']|| state.keys['d']) dx += 1;
+      if(state.keys['arrowup']   || state.keys['w']) dy -= 1;
+      if(state.keys['arrowdown'] || state.keys['s']) dy += 1;
+      if(dx!==0 || dy!==0){
+        const len = Math.hypot(dx,dy);
+        dx/=len; dy/=len;
+        p.x += dx * p.speed * dt;
+        p.y += dy * p.speed * dt;
+      }
+
+      // ograniczenia pola
+      p.x = Math.max(p.size/2, Math.min(canvas.width - p.size/2, p.x));
+      p.y = Math.max(p.size/2, Math.min(canvas.height - p.size/2, p.y));
+
+      // ruch wrogów i odbicia od ścian
+      for(const e of state.enemies){
+        e.x += e.vx * dt;
+        e.y += e.vy * dt;
+        if(e.x < e.r || e.x > canvas.width - e.r) e.vx *= -1;
+        if(e.y < e.r || e.y > canvas.height - e.r) e.vy *= -1;
+      }
+
+      // kolizje z gwiazdkami
+      for(let i = state.stars.length-1; i >= 0; i--){
+        const s = state.stars[i];
+        if(Math.hypot(p.x - s.x, p.y - s.y) < p.size/2 + s.r){
+          state.stars.splice(i,1);
+          state.score += 1;
+          scoreEl.textContent = state.score;
+          // po zebraniu dodaj kolejnego wroga co 3 gwiazdki
+          if(state.score % 3 === 0){
+            const cfg = DIFFICULTY[state.difficulty];
+            const speed = cfg.enemySpeed + state.score * 6;
+            state.enemies.push({
+              x: rand(20,620), y: rand(20,460),
+              vx: rand(-speed,speed), vy: rand(-speed,speed), r:14
+            });
+          }
+          // respawn gwiazdki
+          if(state.stars.length < 4){
+            state.stars.push({ x: rand(20,620), y: rand(20,460), r:8 });
+          }
+        }
+      }
+
+      // kolizja z wrogiem => koniec gry
+      for(const e of state.enemies){
+        if(Math.hypot(p.x - e.x, p.y - e.y) < p.size/2 + e.r){
+          showGameOver();
+        }
+      }
+    }
+
+    // Rysowanie
+    function draw(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      // gwiazdki
+      for(const s of state.stars){
+        ctx.fillStyle = '#ffd54d';
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+        ctx.stroke();
+      }
+
+      // wrogowie
+      for(const e of state.enemies){
+        ctx.fillStyle = '#ff6b6b';
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.r, 0, Math.PI*2);
+        ctx.fill();
+      }
+
+      // gracz
+      const p = state.player;
+      ctx.fillStyle = state.running ? '#66d9ef' : '#888';
+      ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+
+      // overlay pauzy
+      if(state.paused){
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle = '#fff';
+        ctx.font = '28px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('PAUZA', canvas.width/2, canvas.height/2 - 10);
+        ctx.font = '16px Arial';
+        ctx.fillText('Naciśnij P aby wznowić', canvas.width/2, canvas.height/2 + 18);
+      }
+
+      // overlay koniec gry (napisy nadal rysowane na canvas, ale przyciski są DOM)
+      if(!state.running && state.started && gameOverDiv.style.display !== 'flex'){
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle = '#fff';
+        ctx.font = '28px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('KONIEC GRY', canvas.width/2, canvas.height/2 - 10);
+        ctx.font = '16px Arial';
+        ctx.fillText('Naciśnij Restart lub wróć do Menu', canvas.width/2, canvas.height/2 + 18);
+      }
+    }
+
+    // Pętla gry
+    function loop(ts){
+      if(!state.lastTime) state.lastTime = ts;
+      const dt = Math.min(0.05, (ts - state.lastTime) / 1000);
+      state.lastTime = ts;
+      update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    // Start: pokaż menu
+    showMenu();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
