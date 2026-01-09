@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <title>Astro Strzelec — pomysł na grę</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    html,body{height:100%;margin:0;font-family:Arial,Helvetica,sans-serif;background:#050617;color:#fff}
+    .wrap{max-width:900px;width:90%;margin:8px auto}
+    #game{display:block;margin:16px auto;background:#071027;border:4px solid #0f4c81;max-width:900px;width:100%;height:600px;position:relative}
+    .ui{display:flex;justify-content:space-between;align-items:center}
+    button{background:#0f4c81;border:none;color:#fff;padding:8px 12px;border-radius:4px;cursor:pointer}
+    small{opacity:.8}
+    /* lives UI */
+    .lives{display:inline-block;margin-left:12px;vertical-align:middle}
+    .heart{color:#ff6b6b;margin-left:6px;font-size:18px;line-height:1}
+    .heart.dim{opacity:.25;color:#fff}
+    /* menu */
+    .menu-overlay{position:absolute;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:auto}
+    .menu-box{width:360px;background:linear-gradient(180deg,#08243b,#02121a);border:2px solid #0f4c81;padding:18px;border-radius:8px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,0.6)}
+    .menu-box h1{margin:4px 0 8px;font-size:22px}
+    .menu-box p{margin:8px 0;color:#bfe6ff}
+    .menu-row{display:flex;gap:8px;justify-content:center;margin-top:12px}
+    select{background:#06324d;color:#fff;border:1px solid #0f4c81;padding:6px;border-radius:4px}
+    .menu-small{font-size:13px;color:#cfe9ff;opacity:.9;margin-top:8px}
+    .hidden{display:none}
+    </style>
+    </head>
+    <body>
+    <div class="wrap ui">
+    <div>
+      <strong>Astro Strzelec</strong>
+      <div><small>Sterowanie: ← → lub A D, Strzał: Spacja. Zniszcz jak najwięcej meteorów.</small></div>
+    </div>
+    <div>
+      <span id="score">Wynik: 0</span>
+      <span id="livesUI" class="lives"></span>
+      <button id="restart">Menu</button>
+    </div>
+    </div>
+    <div class="wrap" style="position:relative">
+    <canvas id="game" width="900" height="600"></canvas>
+
+    <!-- Main menu overlay -->
+    <div id="menu" class="menu-overlay">
+      <div class="menu-box">
+      <h1>Astro Strzelec</h1>
+      <p>Zniszcz jak najwięcej meteorów. Używaj strzałek lub A/D, spacja aby strzelać.</p>
+
+      <div style="display:flex;justify-content:center;gap:12px;margin-top:8px">
+      <label style="display:flex;flex-direction:column;align-items:center;color:#cfe9ff">
+      Trudność
+      <select id="difficulty">
+      <option value="easy">Łatwa</option>
+      <option value="normal" selected>Normalna</option>
+      <option value="hard">Trudna</option>
+      </select>
+      </label>
+      </div>
+
+      <div class="menu-row">
+      <button id="playBtn">Graj</button>
+      <button id="howBtn">Instrukcja</button>
+      </div>
+
+      <div id="how" class="menu-small hidden">
+      <div>Strzał: Spacja. Poruszanie: ← → lub A D. Zniszczaj większe meteory, aby rozdzielały się na mniejsze.</div>
+      </div>
+
+      <div id="lastScore" class="menu-small" style="margin-top:12px"></div>
+      </div>
+    </div>
+    </div>
+
+    <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const livesUI = document.getElementById('livesUI');
+    const restartBtn = document.getElementById('restart');
+    const menuEl = document.getElementById('menu');
+    const playBtn = document.getElementById('playBtn');
+    const howBtn = document.getElementById('howBtn');
+    const howEl = document.getElementById('how');
+    const difficultySel = document.getElementById('difficulty');
+    const lastScoreEl = document.getElementById('lastScore');
+
+    const W = canvas.width, H = canvas.height;
+
+    let keys = {};
+    addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+    addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+    const player = { x: W/2 - 24, y: H - 70, w: 48, h: 32, speed: 6 };
+    let bullets = [];
+    let meteors = [];
+    let score = 0, lives = 3, tick = 0, running = false;
+    let shotCooldown = 0;
+
+    // invulnerability after hit
+    let invulnerable = false;
+    let invulTimer = 0; // frames
+
+    // game over flag
+    let gameOver = false;
+
+    // gameplay tuning controlled by menu
+    let spawnBase = 50; // lower = more frequent
+    let extraSpawnChance = 0.7;
+
+    // ship texture (offscreen canvas)
+    let shipTextureCanvas = null;
+
+    function createShipTexture() {
+      // create a small offscreen canvas with a simple procedural texture
+      const s = 128;
+      const oc = document.createElement('canvas');
+      oc.width = s; oc.height = s;
+      const octx = oc.getContext('2d');
+
+      // base gradient
+      const g = octx.createLinearGradient(0,0,s,s);
+      g.addColorStop(0, '#8ad6ff');
+      g.addColorStop(0.6, '#4ba3d6');
+      g.addColorStop(1, '#2b6080');
+      octx.fillStyle = g;
+      octx.fillRect(0,0,s,s);
+
+      // subtle stripes
+      octx.globalAlpha = 0.08;
+      octx.fillStyle = '#ffffff';
+      for (let i = -s; i < s*2; i += 6) {
+      octx.fillRect(i, 0, 4, s);
+      octx.rotate ? null : null;
+      }
+      octx.globalAlpha = 1;
+
+      // some darker spots for "metal"
+      for (let i = 0; i < 18; i++) {
+      octx.beginPath();
+      const rx = Math.random()*s, ry = Math.random()*s;
+      const rr = 4 + Math.random()*10;
+      octx.fillStyle = 'rgba(0,0,0,0.06)';
+      octx.arc(rx, ry, rr, 0, Math.PI*2);
+      octx.fill();
+      }
+
+      // highlight diagonal
+      const hg = octx.createLinearGradient(0,0,s,s);
+      hg.addColorStop(0, 'rgba(255,255,255,0.18)');
+      hg.addColorStop(0.4, 'rgba(255,255,255,0.03)');
+      hg.addColorStop(1, 'rgba(255,255,255,0)');
+      octx.fillStyle = hg;
+      octx.fillRect(0,0,s,s);
+
+      shipTextureCanvas = oc;
+    }
+
+    function applyDifficulty(d) {
+    if (d === 'easy') { spawnBase = 70; player.speed = 7; extraSpawnChance = 0.55; }
+    else if (d === 'normal') { spawnBase = 50; player.speed = 6; extraSpawnChance = 0.7; }
+    else { spawnBase = 40; player.speed = 5.5; extraSpawnChance = 0.85; }
+    }
+
+    function showMenu(showScore = true) {
+    menuEl.style.display = 'flex';
+    gameOver = false;
+    if (showScore && score > 0) {
+      lastScoreEl.textContent = `Poprzedni wynik: ${score}`;
+    } else {
+      lastScoreEl.textContent = '';
+    }
+    running = false;
+    }
+    function hideMenu() {
+    menuEl.style.display = 'none';
+    }
+
+    function spawnMeteor() {
+    const r = 18 + Math.random()*28;
+    meteors.push({
+      x: 20 + Math.random()*(W-40),
+      y: -r - Math.random()*200,
+      r: r,
+      vy: 1 + Math.random()*2,
+      vx: (Math.random()-0.5)*1.2
+    });
+    }
+
+    function fire() {
+    if (shotCooldown > 0) return;
+    bullets.push({ x: player.x + player.w/2, y: player.y + 4, vy: -8, r: 4 });
+    shotCooldown = 12; // frames
+    }
+
+    function circleCollide(a,b){
+    const dx = a.x - b.x, dy = a.y - b.y;
+    return dx*dx + dy*dy <= (a.r + b.r)*(a.r + b.r);
+    }
+
+    function updateLivesUI() {
+    // show hearts equal to current lives (simple)
+    let html = '';
+    for (let i = 0; i < lives; i++) html += `<span class="heart">♥</span>`;
+    livesUI.innerHTML = html;
+    }
+
+    function update() {
+    if (!running) return;
+    tick++;
+    // invulnerability timer
+    if (invulTimer > 0) {
+      invulTimer--;
+      if (invulTimer === 0) invulnerable = false;
+    }
+
+    // movement
+    if (keys['arrowleft'] || keys['a']) player.x -= player.speed;
+    if (keys['arrowright'] || keys['d']) player.x += player.speed;
+    player.x = Math.max(0, Math.min(W - player.w, player.x));
+    if (keys[' ']) fire();
+    if (shotCooldown > 0) shotCooldown--;
+
+    // spawn (driven by difficulty via spawnBase)
+    if (tick % spawnBase === 0) spawnMeteor();
+    if (tick % (spawnBase*4) === 0 && Math.random() < extraSpawnChance) spawnMeteor();
+
+    // bullets
+    for (let i = bullets.length-1; i >= 0; i--) {
+      const b = bullets[i];
+      b.y += b.vy;
+      if (b.y < -10) bullets.splice(i,1);
+    }
+
+    // meteors
+    for (let i = meteors.length-1; i >= 0; i--) {
+      const m = meteors[i];
+      m.x += m.vx;
+      m.y += m.vy;
+      // bullet collisions
+      for (let j = bullets.length-1; j >= 0; j--) {
+      if (circleCollide(m, bullets[j])) {
+      bullets.splice(j,1);
+      // split or destroy
+      if (m.r > 24) {
+      // split into two smaller
+      const nr = m.r*0.6;
+      meteors.push({ x: m.x-10, y: m.y, r: nr, vy: m.vy+0.4, vx: -1.2 });
+      meteors.push({ x: m.x+10, y: m.y, r: nr, vy: m.vy+0.4, vx: 1.2 });
+      }
+      meteors.splice(i,1);
+      score += 10;
+      break;
+      }
+      }
+      // player collision (skip if invulnerable)
+      const playerCircle = { x: player.x + player.w/2, y: player.y + player.h/2, r: Math.max(player.w, player.h)/2 };
+      if (!invulnerable && circleCollide(m, playerCircle)) {
+      meteors.splice(i,1);
+      lives--;
+      updateLivesUI();
+      if (lives <= 0) {
+      // stop the game and show game-over overlay on canvas
+      running = false;
+      gameOver = true;
+      hideMenu();
+      } else {
+      // respawn: clear bullets, center player, temporary invulnerability
+      bullets = [];
+      player.x = W/2 - player.w/2;
+      invulnerable = true;
+      invulTimer = 120; // 2 seconds at ~60fps
+      }
+      continue;
+      }
+      if (m.y > H + 100) meteors.splice(i,1);
+    }
+
+    // passive score
+    if (tick % 60 === 0) score += 1;
+    // difficulty ramp
+    if (tick % (60*10) === 0) {
+      meteors.forEach(m => { m.vy += 0.2; m.vx *= 1.05; });
+      player.speed = Math.min(10, player.speed + 0.2);
+    }
+
+    scoreEl.textContent = `Wynik: ${score}`;
+    }
+
+    function drawShip(x,y,w,h,alpha=1) {
+    // Draw ship using the procedural texture (clipped to ship shape)
+    if (!shipTextureCanvas) {
+      // fallback to simple draw if texture not ready
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#8ad6ff';
+      ctx.beginPath();
+      ctx.moveTo(x, y + h/2);
+      ctx.lineTo(x + w - 8, y);
+      ctx.lineTo(x + w - 8, y + h);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(x+6, y+h/2-6, 8, 12);
+      ctx.restore();
+      return;
+    }
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // create ship shape path and clip
+    ctx.beginPath();
+    ctx.moveTo(x, y + h/2);
+    ctx.lineTo(x + w - 8, y);
+    ctx.lineTo(x + w - 8, y + h);
+    ctx.closePath();
+    ctx.clip();
+
+    // draw texture scaled to ship bounding box
+    ctx.drawImage(shipTextureCanvas, x - w*0.2, y - h*0.1, w*1.4, h*1.6);
+
+    ctx.restore();
+
+    // draw cockpit/highlight on top for readability
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, alpha*1.2);
+    ctx.fillStyle = '#ffffffcc';
+    ctx.fillRect(x+6, y+h/2-6, 8, 12);
+    ctx.restore();
+
+    // subtle outline
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x, y + h/2);
+    ctx.lineTo(x + w - 8, y);
+    ctx.lineTo(x + w - 8, y + h);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+    }
+
+    function draw() {
+    ctx.clearRect(0,0,W,H);
+    const g = ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#071027');
+    g.addColorStop(1,'#01020b');
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,W,H);
+
+    // bullets
+    ctx.fillStyle = '#fff';
+    bullets.forEach(b => {
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+      ctx.fill();
+    });
+
+    // meteors
+    meteors.forEach(m => {
+      ctx.fillStyle = '#d95b3f';
+      ctx.beginPath();
+      ctx.arc(m.x, m.y, m.r, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(217,91,63,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(m.x - Math.sign(m.vx || 1)*m.r*1.2, m.y, m.r*1.6, m.r*0.7, 0, 0, Math.PI*2);
+      ctx.fill();
+    });
+
+    // player (blink while invulnerable)
+    let drawPlayer = true;
+    if (invulnerable) {
+      // blink: show on alternate intervals
+      drawPlayer = Math.floor(tick/6) % 2 === 0;
+    }
+    if (drawPlayer) {
+      drawShip(player.x, player.y, player.w, player.h, invulnerable ? 0.8 : 1);
+    }
+
+    if (!running && menuEl.style.display === 'none') {
+      // show game-over overlay on canvas
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(0,0,W,H);
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 42px Arial';
+      ctx.fillText('KONIEC GRY', W/2, H/2 - 20);
+      ctx.font = '20px Arial';
+      ctx.fillText(`Wynik: ${score}`, W/2, H/2 + 18);
+      ctx.font = '16px Arial';
+      ctx.fillText('Naciśnij Menu, aby wrócić do menu głównego', W/2, H/2 + 46);
+    }
+    }
+
+    function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+    }
+
+    function reset() {
+    bullets = []; meteors = []; score = 0; lives = 3; tick = 0; running = true;
+    player.x = W/2 - player.w/2;
+    shotCooldown = 0;
+    invulnerable = false; invulTimer = 0;
+    gameOver = false;
+    scoreEl.textContent = `Wynik: ${score}`;
+    updateLivesUI();
+    }
+
+    // UI wiring
+    playBtn.addEventListener('click', () => {
+    applyDifficulty(difficultySel.value);
+    hideMenu();
+    reset();
+    });
+
+    howBtn.addEventListener('click', () => {
+    howEl.classList.toggle('hidden');
+    });
+
+    // restart/menu button shows menu
+    restartBtn.addEventListener('click', () => {
+    showMenu(true);
+    });
+
+    // keyboard: Enter to start from menu
+    addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ' ') && menuEl.style.display !== 'none') {
+      applyDifficulty(difficultySel.value);
+      hideMenu();
+      reset();
+    }
+    });
+
+    // init
+    applyDifficulty('normal');
+    updateLivesUI();
+    createShipTexture();
+    showMenu(false); // show main menu on load (no previous score)
+    loop();
+    </script>
+    </body>
+    </html>
