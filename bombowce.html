@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Podniebna Ucieczka 2026</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: 'Segoe UI', sans-serif; }
+        canvas { display: block; }
+        #ui { position: absolute; top: 20px; left: 20px; color: white; font-size: 28px; text-shadow: 2px 2px 4px #000; pointer-events: none; z-index: 5; }
+        
+        #overlay {
+            position: absolute; inset: 0; background: rgba(0, 0, 0, 0.85);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            color: white; z-index: 10; text-align: center;
+        }
+
+        h1 { font-size: 50px; color: #f1c40f; margin-bottom: 10px; }
+        .score-info { font-size: 24px; margin-bottom: 30px; color: #ecf0f1; }
+        
+        .btn { 
+            padding: 15px 45px; font-size: 22px; cursor: pointer; 
+            background: #27ae60; border: none; color: white; border-radius: 50px;
+            transition: 0.3s; font-weight: bold; text-transform: uppercase;
+        }
+        .btn:hover { background: #2ecc71; transform: scale(1.05); }
+        .btn.reset { background: #e67e22; }
+        .btn.reset:hover { background: #f39c12; }
+    </style>
+</head>
+<body>
+
+    <div id="ui">WYNIK: <span id="score">0</span></div>
+
+    <div id="overlay">
+        <h1 id="status-title">PODNIEBNA UCIECZKA</h1>
+        <p id="status-desc" class="score-info">Używaj WASD, aby przetrwać jak najdłużej!</p>
+        <div id="button-container">
+            <button class="btn" onclick="startGame()">START</button>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreElement = document.getElementById('score');
+const overlay = document.getElementById('overlay');
+const statusTitle = document.getElementById('status-title');
+const statusDesc = document.getElementById('status-desc');
+const buttonContainer = document.getElementById('button-container');
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+let score = 0;
+let gameActive = false;
+let enemies = [];
+const keys = {};
+
+window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+function showMainMenu() {
+    gameActive = false;
+    overlay.style.display = 'flex';
+    statusTitle.innerText = "PODNIEBNA UCIECZKA";
+    statusDesc.innerText = "WASD - Sterowanie | Unikaj czerwonych bombowców";
+    buttonContainer.innerHTML = '<button class="btn" onclick="startGame()">START</button>';
+}
+
+function startGame() {
+    gameActive = true;
+    overlay.style.display = 'none';
+    score = 0;
+    enemies = [];
+    player.x = canvas.width / 2;
+    player.y = canvas.height / 2;
+    requestAnimationFrame(gameLoop);
+}
+
+function gameOver() {
+    gameActive = false;
+    overlay.style.display = 'flex';
+    statusTitle.innerText = "ZAKOŃCZONO LOT";
+    statusDesc.innerHTML = `Twój wynik: <b>${Math.floor(score)}</b>`;
+    // Zmiana przycisku na "POWRÓT DO MENU"
+    buttonContainer.innerHTML = '<button class="btn reset" onclick="showMainMenu()">POWRÓT DO MENU</button>';
+}
+
+const player = { x: 0, y: 0, size: 30, speed: 7 };
+
+function spawnEnemy() {
+    if (!gameActive) return;
+    const size = 35;
+    let x, y;
+    if (Math.random() < 0.5) {
+        x = Math.random() < 0.5 ? -size : canvas.width + size;
+        y = Math.random() * canvas.height;
+    } else {
+        x = Math.random() * canvas.width;
+        y = Math.random() < 0.5 ? -size : canvas.height + size;
+    }
+    enemies.push({ x, y, size, speed: 2.5 + (score / 100) }); // Wrogowie przyspieszają z czasem
+}
+
+setInterval(spawnEnemy, 900);
+
+function update() {
+    if (keys['w'] && player.y > 20) player.y -= player.speed;
+    if (keys['s'] && player.y < canvas.height - 20) player.y += player.speed;
+    if (keys['a'] && player.x > 20) player.x -= player.speed;
+    if (keys['d'] && player.x < canvas.width - 20) player.x += player.speed;
+
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i];
+        const dx = player.x - e.x;
+        const dy = player.y - e.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        
+        e.x += (dx / dist) * e.speed;
+        e.y += (dy / dist) * e.speed;
+
+        if (dist < 28) {
+            gameOver();
+        }
+    }
+    score += 0.1;
+    scoreElement.innerText = Math.floor(score);
+}
+
+function draw() {
+    ctx.fillStyle = '#87CEEB';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Cienie
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = "rgba(0,0,0,0.3)";
+
+    // Gracz
+    ctx.fillStyle = '#2980b9';
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.size/2, 0, Math.PI*2);
+    ctx.fill();
+
+    // Wrogowie
+    ctx.fillStyle = '#c0392b';
+    ctx.shadowColor = "rgba(192, 57, 43, 0.5)";
+    enemies.forEach(e => {
+        ctx.fillRect(e.x - e.size/2, e.y - 4, e.size, 8); 
+        ctx.fillRect(e.x - 4, e.y - e.size/2, 8, e.size);
+    });
+    
+    ctx.shadowBlur = 0; // Reset cienia
+}
+
+function gameLoop() {
+    if (!gameActive) return;
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+showMainMenu(); // Inicjalizacja menu na start
+</script>
+</body>
+</html>
