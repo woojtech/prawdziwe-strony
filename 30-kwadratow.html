@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Łapacz Kwadratów - 40 Sekund</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a2e;
+            color: white;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            width: 600px;
+            height: 400px;
+            background-color: #16213e;
+            border: 4px solid #0f3460;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            cursor: crosshair;
+        }
+
+        #target {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background-color: #e94560;
+            border-radius: 8px;
+            display: none;
+            cursor: pointer;
+            box-shadow: 0 0 15px #e94560;
+        }
+
+        .stats {
+            font-size: 28px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 52, 96, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 11px;
+            z-index: 10;
+        }
+
+        .win-text {
+            color: #4ee44e;
+            font-size: 40px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #4ee44e;
+            display: none;
+        }
+
+        button {
+            padding: 15px 40px;
+            font-size: 22px;
+            background-color: #e94560;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            transform: scale(1.1);
+            background-color: #ff2e63;
+        }
+
+        #goal-info {
+            font-size: 14px;
+            color: #888;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="stats">
+        PUNKTY: <span id="score">0</span>/30 | CZAS: <span id="timer">40</span>s
+    </div>
+
+    <div id="game-container">
+        <div id="target"></div>
+        
+        <div id="overlay">
+            <h1 id="status-title">WYZWANIE: 30 PUNKTÓW</h1>
+            <h1 class="win-text" id="win-message">WYGRANA! 🎉</h1>
+            <button id="action-btn">START</button>
+            <p id="goal-info">Masz 40 sekund na złapanie 30 kwadratów!</p>
+        </div>
+    </div>
+
+    <script>
+        const target = document.getElementById('target');
+        const scoreElement = document.getElementById('score');
+        const timerElement = document.getElementById('timer');
+        const actionBtn = document.getElementById('action-btn');
+        const overlay = document.getElementById('overlay');
+        const statusTitle = document.getElementById('status-title');
+        const winMessage = document.getElementById('win-message');
+        const container = document.getElementById('game-container');
+
+        let score = 0;
+        let timeLeft = 40; // Zmieniono czas na 40 sekund
+        let gameActive = false;
+        let timerInterval;
+
+        function moveTarget() {
+            const maxX = container.clientWidth - target.clientWidth;
+            const maxY = container.clientHeight - target.clientHeight;
+            target.style.left = Math.floor(Math.random() * maxX) + 'px';
+            target.style.top = Math.floor(Math.random() * maxY) + 'px';
+        }
+
+        function startGame() {
+            score = 0;
+            timeLeft = 40; // Reset czasu do 40 sekund przy każdym starcie
+            gameActive = true;
+            
+            scoreElement.innerText = score;
+            timerElement.innerText = timeLeft;
+            
+            overlay.style.display = 'none';
+            winMessage.style.display = 'none';
+            statusTitle.style.display = 'block';
+            target.style.display = 'block';
+
+            moveTarget();
+
+            // Interwał odliczania
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerElement.innerText = timeLeft;
+                if (timeLeft <= 0) endGame(false);
+            }, 1000);
+        }
+
+        function endGame(isWin) {
+            gameActive = false;
+            clearInterval(timerInterval);
+            target.style.display = 'none';
+            overlay.style.display = 'flex';
+            
+            if (isWin) {
+                statusTitle.style.display = 'none';
+                winMessage.style.display = 'block';
+                actionBtn.innerText = "ZAGRAJ PONOWNIE";
+            } else {
+                statusTitle.innerText = "KONIEC CZASU!";
+                actionBtn.innerText = "SPRÓBUJ PONOWNIE";
+            }
+        }
+
+        target.addEventListener('mousedown', () => {
+            if (gameActive) {
+                score++;
+                scoreElement.innerText = score;
+
+                if (score >= 30) {
+                    endGame(true);
+                } else {
+                    moveTarget();
+                }
+            }
+        });
+
+        actionBtn.addEventListener('click', startGame);
+    </script>
+</body>
+</html>
