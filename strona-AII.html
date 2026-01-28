@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>TERMINAL_v0.2</title>
+    <style>
+        body {
+            background-color: #050505;
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+            text-shadow: 0 0 5px #00ff41;
+        }
+        #output {
+            flex-grow: 1;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            border: 1px solid #004411;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: rgba(0, 20, 0, 0.3);
+        }
+        .input-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        input {
+            background: #111;
+            border: 2px solid #00ff41;
+            color: #00ff41;
+            padding: 12px;
+            font-family: inherit;
+            outline: none;
+            box-shadow: inset 0 0 5px #00ff41;
+        }
+        button {
+            background: #00ff41;
+            color: #000;
+            border: none;
+            padding: 10px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: 0.3s;
+            box-shadow: 0 0 15px #00ff41;
+        }
+        button:hover {
+            background: #000;
+            color: #00ff41;
+            box-shadow: 0 0 25px #00ff41;
+        }
+    </style>
+</head>
+<body>
+
+<div id="output">SYSTEM BOOTING... [OK]
+WPISZ 'HELP', ABY ROZPOCZĄĆ.</div>
+
+<div class="input-container">
+    <input type="text" id="cmd" placeholder="Wpisz komendę..." autofocus>
+    <button onclick="handleCommand()">WYŚLIJ KOMENDĘ</button>
+</div>
+
+<script>
+    const input = document.getElementById('cmd');
+    const output = document.getElementById('output');
+
+    const commands = {
+        'help': `DOSTĘPNE KOMENDY:
+--------------------------------------------------
+STATUS  - Wyświetla aktualny stan systemów
+SYSTEM  - Pokazuje informacje o wersji terminala
+KONTAKT - Próbuje nawiązać połączenie z serwerem
+CLEAR   - Czyści ekran konsoli
+HELP    - Wyświetla tę listę pomocy`,
+        
+        'status': 'Wszystkie systemy operacyjne działają w normie.',
+        'system': 'V-OS Version 1.0.2 - Terminal Edition',
+        'kontakt': 'Błąd połączenia z serwerem pocztowym...'
+    };
+
+    function handleCommand() {
+        const val = input.value.toLowerCase().trim();
+        if (val === '') return;
+
+        if (val === 'clear') {
+            output.innerText = 'SYSTEM READY...';
+        } else {
+            const response = commands[val] || 'Nieznana komenda: ' + val;
+            output.innerText += `\n\n> ${val}\n${response}`;
+        }
+        
+        input.value = '';
+        output.scrollTop = output.scrollHeight;
+    }
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleCommand();
+    });
+</script>
+
+</body>
+</html>
