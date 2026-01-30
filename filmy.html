@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Movie Tycoon: Oscar Edition</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: white; display: flex; justify-content: center; padding: 20px; }
+        .game-container { background: #2d2d2d; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 400px; position: relative; }
+        .stats { display: flex; justify-content: space-between; border-bottom: 2px solid #444; padding-bottom: 10px; margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #aaa; }
+        input, select { width: 100%; padding: 10px; border-radius: 5px; border: none; background: #444; color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: #e50914; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-bottom: 10px; }
+        button:hover { background: #ff0a16; }
+        #log { margin-top: 20px; padding: 10px; background: #111; border-radius: 5px; font-size: 0.9em; height: 120px; overflow-y: auto; }
+        .success { color: #4caf50; }
+        .fail { color: #f44336; }
+        .oscar-badge { color: #ffd700; font-weight: bold; }
+        
+        /* Animacja Oscara */
+        #oscar-alert {
+            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9); border: 2px solid #ffd700; padding: 20px; text-align: center;
+            border-radius: 10px; z-index: 10; animation: popIn 0.5s ease-out;
+        }
+        @keyframes popIn { 0% { transform: translate(-50%, -50%) scale(0); } 100% { transform: translate(-50%, -50%) scale(1); } }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <div id="oscar-alert">
+        <h1 style="color: #ffd700; margin: 0;">🏆 OSCAR!</h1>
+        <p>Twój film to arcydzieło!</p>
+        <p style="font-size: 0.8em;">+50,000 PLN Bonusu</p>
+        <button onclick="closeOscar()" style="background: #ffd700; color: black; padding: 5px 15px;">Wspaniale!</button>
+    </div>
+
+    <h2>🎬 Movie Tycoon</h2>
+    <div class="stats">
+        <div>Budżet: <span id="money">100000</span> PLN</div>
+        <div>Oscary: <span id="oscars" class="oscar-badge">0</span></div>
+    </div>
+
+    <div class="input-group">
+        <label>Tytuł filmu</label>
+        <input type="text" id="title" placeholder="np. Diuna 3">
+    </div>
+
+    <div class="input-group">
+        <label>Gatunek</label>
+        <select id="genre">
+            <option value="Akcja">Akcja</option>
+            <option value="Komedia">Komedia</option>
+            <option value="Dramat">Dramat</option>
+            <option value="Sci-Fi">Sci-Fi</option>
+        </select>
+    </div>
+
+    <div class="input-group">
+        <label>Budżet produkcji (PLN)</label>
+        <input type="number" id="budget" value="30000">
+    </div>
+
+    <button onclick="produceMovie()">KRĘĆ FILM</button>
+
+    <div id="log">Twoje studio jest gotowe do pracy.</div>
+</div>
+
+<script>
+    let money = 100000;
+    let oscars = 0;
+
+    function updateUI() {
+        document.getElementById('money').innerText = money.toLocaleString();
+        document.getElementById('oscars').innerText = oscars;
+    }
+
+    function produceMovie() {
+        const title = document.getElementById('title').value || "Bez tytułu";
+        const genre = document.getElementById('genre').value;
+        const budget = parseInt(document.getElementById('budget').value);
+        const log = document.getElementById('log');
+
+        if (budget > money) {
+            log.innerHTML = `<span class="fail">Brak funduszy!</span><hr>` + log.innerHTML;
+            return;
+        }
+
+        money -= budget;
+        
+        // Szansa na 10/10 rośnie wraz z budżetem
+        const quality = Math.floor(Math.random() * 10) + 1;
+        const multiplier = (Math.random() * 2.5) + (quality / 5);
+        const boxOffice = Math.floor(budget * multiplier);
+        money += boxOffice;
+
+        let message = `<strong>${title}</strong> (${genre})<br>Ocena: ${quality}/10 | Zarobek: ${boxOffice.toLocaleString()} PLN`;
+
+        // System Oscarów
+        if (quality === 10) {
+            oscars++;
+            money += 50000; // Bonus za Oscara
+            document.getElementById('oscar-alert').style.display = 'block';
+            message = `<span class="oscar-badge">🏆 OSCAROWY HIT!</span><br>` + message;
+        }
+
+        log.innerHTML = message + `<hr>` + log.innerHTML;
+        updateUI();
+    }
+
+    function closeOscar() {
+        document.getElementById('oscar-alert').style.display = 'none';
+    }
+
+    updateUI();
+</script>
+
+</body>
+</html>

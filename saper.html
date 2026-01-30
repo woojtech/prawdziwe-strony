@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Saper - Pro</title>
+    <style>
+        :root { --bg: #2c3e50; --cell-size: 35px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
+        #game-container { text-align: center; background: #34495e; padding: 20px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .screen { display: none; }
+        .active { display: block; }
+        
+        h1 { font-size: 3rem; margin-bottom: 20px; color: #f1c40f; text-shadow: 2px 2px #c0392b; }
+        button { padding: 10px 25px; font-size: 1.2rem; cursor: pointer; border: none; border-radius: 5px; background: #27ae60; color: white; transition: 0.3s; margin: 5px; }
+        button:hover { background: #2ecc71; transform: scale(1.05); }
+        
+        #board { display: grid; grid-template-columns: repeat(10, var(--cell-size)); gap: 2px; border: 4px solid #2c3e50; margin: 20px auto; }
+        .cell { width: var(--cell-size); height: var(--cell-size); background: #95a5a6; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; border-radius: 2px; color: #2c3e50; transition: 0.1s; }
+        .cell.revealed { background: #ecf0f1; cursor: default; }
+        .cell.mine { background: #e74c3c; animation: explode 0.5s infinite alternate; }
+        .cell.flag { background: #f1c40f; }
+        .cell.selected { border: 2px solid #fff; box-sizing: border-box; }
+
+        @keyframes explode { 
+            from { transform: scale(1); box-shadow: 0 0 0px red; } 
+            to { transform: scale(1.1); box-shadow: 0 0 15px red; } 
+        }
+        .shake { animation: shake 0.4s; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- MENU GŁÓWNE -->
+        <div id="menu-screen" class="screen active">
+            <h1>SAPER</h1>
+            <button onclick="startGame()">GRAJ</button>
+        </div>
+
+        <!-- EKRAN GRY -->
+        <div id="game-screen" class="screen">
+            <div id="status">Użyj myszki (odkryj) i SPACJI (flaga)</div>
+            <div id="board"></div>
+        </div>
+
+        <!-- EKRAN KOŃCOWY -->
+        <div id="end-screen" class="screen">
+            <h1 id="end-title">KONIEC</h1>
+            <button onclick="startGame()">GRAJ PONOWNIE</button>
+            <button onclick="showMenu()">MENU</button>
+        </div>
+    </div>
+
+    <script>
+        const rows = 10, cols = 10, minesCount = 15;
+        let board = [], gameOver = false, selectedCell = {r: 0, c: 0};
+
+        function showMenu() {
+            switchScreen('menu-screen');
+        }
+
+        function switchScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        function startGame() {
+            gameOver = false;
+            board = [];
+            const boardEl = document.getElementById('board');
+            boardEl.innerHTML = '';
+            boardEl.classList.remove('shake');
+            switchScreen('game-screen');
+
+            for (let r = 0; r < rows; r++) {
+                board[r] = [];
+                for (let c = 0; c < cols; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.addEventListener('click', () => clickCell(r, c));
+                    cell.addEventListener('mouseover', () => { selectedCell = {r, c}; updateSelection(); });
+                    boardEl.appendChild(cell);
+                    board[r][c] = { mine: false, revealed: false, flagged: false, element: cell };
+                }
+            }
+
+            let placed = 0;
+            while (placed < minesCount) {
+                let r = Math.floor(Math.random() * rows), c = Math.floor(Math.random() * cols);
+                if (!board[r][c].mine) { board[r][c].mine = true; placed++; }
+            }
+            updateSelection();
+        }
+
+        function updateSelection() {
+            document.querySelectorAll('.cell').forEach(el => el.classList.remove('selected'));
+            board[selectedCell.r][selectedCell.c].element.classList.add('selected');
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                toggleFlag(selectedCell.r, selectedCell.c);
+            }
+        });
+
+        function clickCell(r, c) {
+            if (gameOver || board[r][c].revealed || board[r][c].flagged) return;
+            if (board[r][c].mine) return endGame(false);
+            reveal(r, c);
+            checkWin();
+        }
+
+        function reveal(r, c) {
+            if (r < 0 || r >= rows || c < 0 || c >= cols || board[r][c].revealed) return;
+            board[r][c].revealed = true;
+            const cell = board[r][c];
+            cell.element.classList.add('revealed');
+            
+            let mines = countMines(r, c);
+            if (mines > 0) {
+                cell.element.innerText = mines;
+                cell.element.style.color = ['','#0000FF','#008000','#FF0000','#000080','#800000','#008080','#000000','#808080'][mines];
+            } else {
+                for (let dr = -1; dr <= 1; dr++) 
+                    for (let dc = -1; dc <= 1; dc++) reveal(r + dr, c + dc);
+            }
+        }
+
+        function countMines(r, c) {
+            let count = 0;
+            for (let dr = -1; dr <= 1; dr++)
+                for (let dc = -1; dc <= 1; dc++)
+                    if (board[r+dr]?.[c+dc]?.mine) count++;
+            return count;
+        }
+
+        function toggleFlag(r, c) {
+            if (gameOver || board[r][c].revealed) return;
+            board[r][c].flagged = !board[r][c].flagged;
+            board[r][c].element.innerText = board[r][c].flagged ? "🚩" : "";
+            board[r][c].element.classList.toggle('flag');
+        }
+
+        function checkWin() {
+            const revealedCount = board.flat().filter(c => c.revealed).length;
+            if (revealedCount === (rows * cols) - minesCount) endGame(true);
+        }
+
+        function endGame(win) {
+            gameOver = true;
+            if (!win) document.getElementById('board').classList.add('shake');
+            
+            setTimeout(() => {
+                document.getElementById('end-title').innerText = win ? "WYGRANA! 🎉" : "PRZEGRANA! 💣";
+                document.getElementById('end-title').style.color = win ? "#2ecc71" : "#e74c3c";
+                switchScreen('end-screen');
+                board.flat().forEach(c => { if (c.mine) c.element.classList.add('mine', 'revealed'); });
+            }, 800);
+        }
+    </script>
+</body>
+</html>
