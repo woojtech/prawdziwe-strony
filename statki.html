@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Statki - Bitwa Morska</title>
+    <style>
+        :root { --water: #3498db; --ship: #7f8c8d; --hit: #e74c3c; --miss: #ecf0f1; --border: #2980b9; --forbidden: #c0392b; }
+        body { font-family: 'Segoe UI', sans-serif; background: #2c3e50; color: white; display: flex; flex-direction: column; align-items: center; margin: 0; }
+        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100%; }
+        .active { display: flex; }
+        h1 { font-size: 4rem; text-transform: uppercase; letter-spacing: 10px; margin-bottom: 2rem; }
+        button { padding: 15px 40px; font-size: 1.5rem; cursor: pointer; background: #27ae60; color: white; border: none; border-radius: 5px; transition: 0.3s; margin: 10px; }
+        button:hover { background: #2ecc71; transform: scale(1.05); }
+        .game-container { display: flex; gap: 50px; flex-wrap: wrap; justify-content: center; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(10, 35px); grid-template-rows: repeat(10, 35px); gap: 2px; background: var(--border); border: 2px solid var(--border); }
+        .cell { width: 35px; height: 35px; background: var(--water); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .cell.ship { background: var(--ship); }
+        .cell.hit { background: var(--hit); }
+        .cell.miss { background: var(--miss); color: #333; }
+        .enemy .ship { background: var(--water); }
+        #setup-info { margin-bottom: 10px; font-size: 1.2rem; color: #f1c40f; }
+    </style>
+</head>
+<body>
+
+    <div id="menu-screen" class="screen active">
+        <h1>STATKI</h1>
+        <button onclick="startGame()">GRAJ</button>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <div id="setup-info">Ustaw statki</div>
+        <div class="game-container">
+            <div class="grid-wrapper">
+                <h3>Twoja Flota</h3>
+                <div id="player-board" class="grid"></div>
+            </div>
+            <div class="grid-wrapper" id="enemy-area" style="display:none;">
+                <h3>Flota Przeciwnika</h3>
+                <div id="enemy-board" class="grid enemy"></div>
+            </div>
+        </div>
+        <button id="start-battle-btn" style="display:none;" onclick="startBattle()">ROZPOCZNIJ BITWĘ</button>
+    </div>
+
+    <div id="end-screen" class="screen">
+        <h1 id="end-title">WYGRANA!</h1>
+        <button onclick="startGame()">GRAJ PONOWNIE</button>
+        <button onclick="showMenu()" style="background:#7f8c8d">MENU</button>
+    </div>
+
+    <script>
+        const SIZE = 10;
+        const SHIPS_CONFIG = [5, 4, 3, 3, 2];
+        let playerBoard, enemyBoard, playerShips, enemyShips, currentShipIndex, isGameOver, canAttack;
+
+        function showMenu() {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('menu-screen').classList.add('active');
+        }
+
+        function startGame() {
+            isGameOver = false; currentShipIndex = 0; playerShips = []; enemyShips = [];
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('game-screen').classList.add('active');
+            document.getElementById('enemy-area').style.display = 'none';
+            document.getElementById('start-battle-btn').style.display = 'none';
+            updateSetupInfo();
+            initBoards();
+        }
+
+        function initBoards() {
+            const pGrid = document.getElementById('player-board');
+            const eGrid = document.getElementById('enemy-board');
+            pGrid.innerHTML = ''; eGrid.innerHTML = '';
+            playerBoard = Array(SIZE * SIZE).fill(0);
+            enemyBoard = Array(SIZE * SIZE).fill(0);
+
+            for (let i = 0; i < 100; i++) {
+                let pCell = document.createElement('div'); pCell.className = 'cell';
+                pCell.onclick = () => placePlayerShip(i);
+                pGrid.appendChild(pCell);
+                let eCell = document.createElement('div'); eCell.className = 'cell';
+                eCell.onclick = () => playerAttack(i);
+                eGrid.appendChild(eCell);
+            }
+            generateEnemyShips();
+        }
+
+        // Sprawdza czy pole i jego sąsiedztwo (buffer) jest wolne
+        function canPlaceShip(board, index, len, isVertical) {
+            for (let i = 0; i < len; i++) {
+                let currIndex = isVertical ? index + (i * SIZE) : index + i;
+                let r = Math.floor(currIndex / SIZE);
+                let c = currIndex % SIZE;
+
+                if (r >= SIZE || c >= SIZE) return false;
+
+                // Sprawdzanie otoczenia 3x3 dla każdego segmentu statku
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        let nr = r + dr, nc = c + dc;
+                        if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) {
+                            if (board[nr * SIZE + nc] === 1) return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        function placePlayerShip(index) {
+            if (currentShipIndex >= SHIPS_CONFIG.length) return;
+            const len = SHIPS_CONFIG[currentShipIndex];
+            
+            // Dla ułatwienia stawiamy tylko poziomo, jeśli chcesz pionowo - dodaj przełącznik
+            if ((index % SIZE) + len > SIZE) return;
+
+            if (canPlaceShip(playerBoard, index, len, false)) {
+                for (let i = 0; i < len; i++) {
+                    playerBoard[index + i] = 1;
+                    playerShips.push(index + i);
+                    document.getElementById('player-board').children[index + i].classList.add('ship');
+                }
+                currentShipIndex++;
+                updateSetupInfo();
+            }
+        }
+
+        function updateSetupInfo() {
+            if (currentShipIndex < SHIPS_CONFIG.length) {
+                document.getElementById('setup-info').innerText = `Postaw statek: ${SHIPS_CONFIG[currentShipIndex]}-masztowiec (poziomo)`;
+            } else {
+                document.getElementById('setup-info').innerText = "Flota gotowa!";
+                document.getElementById('start-battle-btn').style.display = 'block';
+            }
+        }
+
+        function generateEnemyShips() {
+            SHIPS_CONFIG.forEach(len => {
+                let placed = false;
+                while (!placed) {
+                    let isVert = Math.random() > 0.5;
+                    let index = Math.floor(Math.random() * 100);
+                    if (canPlaceShip(enemyBoard, index, len, isVert)) {
+                        for (let i = 0; i < len; i++) {
+                            let curr = isVert ? index + (i * SIZE) : index + i;
+                            enemyBoard[curr] = 1;
+                            enemyShips.push(curr);
+                        }
+                        placed = true;
+                    }
+                }
+            });
+        }
+
+        function startBattle() {
+            document.getElementById('enemy-area').style.display = 'block';
+            document.getElementById('start-battle-btn').style.display = 'none';
+            canAttack = true;
+        }
+
+        function playerAttack(i) {
+            if (!canAttack || isGameOver) return;
+            let cell = document.getElementById('enemy-board').children[i];
+            if (cell.classList.contains('hit') || cell.classList.contains('miss')) return;
+
+            if (enemyBoard[i] === 1) {
+                cell.classList.add('hit');
+                enemyShips = enemyShips.filter(s => s !== i);
+                if (enemyShips.length === 0) endGame(true);
+            } else {
+                cell.classList.add('miss');
+                canAttack = false;
+                setTimeout(enemyAI, 600);
+            }
+        }
+
+        function enemyAI() {
+            let idx;
+            do { idx = Math.floor(Math.random() * 100); } 
+            while (document.getElementById('player-board').children[idx].classList.contains('hit') || 
+                   document.getElementById('player-board').children[idx].classList.contains('miss'));
+
+            let cell = document.getElementById('player-board').children[idx];
+            if (playerBoard[idx] === 1) {
+                cell.classList.add('hit');
+                playerShips = playerShips.filter(s => s !== idx);
+                if (playerShips.length === 0) endGame(false);
+                else setTimeout(enemyAI, 800);
+            } else {
+                cell.classList.add('miss');
+                canAttack = true;
+            }
+        }
+
+        function endGame(win) {
+            isGameOver = true;
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('end-screen').classList.add('active');
+            document.getElementById('end-title').innerText = win ? "WYGRANA!" : "PRZEGRANA!";
+            document.getElementById('end-title').style.color = win ? "#27ae60" : "#e74c3c";
+        }
+    </script>
+</body>
+</html>
