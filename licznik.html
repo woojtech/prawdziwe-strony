@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Dino Donut Office Quest</title>
+    <style>
+        @import url('https://fonts.googleapis.com');
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #222; font-family: 'Press Start 2P', cursive; overflow: hidden; }
+        #game-container { width: 800px; height: 200px; position: relative; }
+        #game-area { width: 800px; height: 200px; border-bottom: 4px solid #535353; position: relative; overflow: hidden; background: #fff; transition: background 0.5s; }
+        
+        /* Tryb Biurowy */
+        #game-area.office-mode { background: #d1d8e0; border-bottom: 4px solid #4b6584; }
+
+        .ui-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
+        .hidden { display: none !important; }
+        .btn { background: #ff9f43; color: white; padding: 15px 30px; border: 4px solid #ee5253; cursor: pointer; font-family: 'Press Start 2P', cursive; font-size: 14px; transition: 0.2s; }
+        .btn:hover { transform: scale(1.1); background: #ee5253; }
+
+        #score { position: absolute; top: 10px; right: 20px; font-size: 14px; z-index: 10; color: #535353; }
+        #dino { font-size: 40px; width: 50px; height: 50px; position: absolute; bottom: 0; left: 50px; display: flex; align-items: center; justify-content: center; }
+        
+        .obstacle, .donut { position: absolute; display: flex; align-items: center; justify-content: center; }
+        .obstacle { font-size: 30px; width: 40px; height: 40px; bottom: 0; }
+        .donut { font-size: 30px; width: 40px; height: 40px; bottom: 80px; }
+
+        .jump { animation: jump-anim 0.5s ease-out forwards; }
+        @keyframes jump-anim { 0%, 100% { bottom: 0; } 50% { bottom: 120px; } }
+        
+        .move { animation: move-anim 1.8s infinite linear; }
+        @keyframes move-anim { 0% { left: 850px; } 100% { left: -100px; } }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="game-area">
+            <div id="score">SCORE: 0</div>
+            <div id="dino">🦖</div>
+        </div>
+
+        <!-- Menu Główne -->
+        <div id="main-menu" class="ui-screen">
+            <h1 style="color: #535353;">DINO OFFICE</h1>
+            <p style="font-size: 8px; margin-bottom: 20px;">Zjedz 🍩 by iść do pracy!</p>
+            <button class="btn" onclick="startGame()">GRAJ</button>
+        </div>
+
+        <!-- Ekran Końcowy -->
+        <div id="game-over-screen" class="ui-screen hidden">
+            <h1 style="color: #ee5253;">KONIEC GRY</h1>
+            <p id="final-score" style="font-size: 10px;"></p>
+            <button class="btn" onclick="resetGame()">ZAGRAJ PONOWNIE</button>
+        </div>
+    </div>
+
+    <script>
+        const gameArea = document.getElementById("game-area");
+        const dino = document.getElementById("dino");
+        const scoreDiv = document.getElementById("score");
+        const mainMenu = document.getElementById("main-menu");
+        const gameOverScreen = document.getElementById("game-over-screen");
+
+        let score = 0;
+        let isAlive = false;
+        let isOffice = false;
+        let gameLoopInterval;
+        let spawnInterval;
+
+        function startGame() {
+            mainMenu.classList.add("hidden");
+            gameOverScreen.classList.add("hidden");
+            isAlive = true;
+            isOffice = false;
+            score = 0;
+            gameArea.classList.remove("office-mode");
+            dino.innerText = "🦖";
+            
+            document.addEventListener("keydown", handleInput);
+            gameLoopInterval = setInterval(update, 10);
+            spawnInterval = setInterval(spawnEverything, 1600);
+        }
+
+        function handleInput(e) {
+            if ((e.code === "Space" || e.code === "ArrowUp") && !dino.classList.contains("jump")) {
+                dino.classList.add("jump");
+                setTimeout(() => dino.classList.remove("jump"), 500);
+            }
+        }
+
+        function spawnEverything() {
+            if (!isAlive) return;
+            
+            // 20% szans na pączka, 80% na przeszkodę
+            if (Math.random() > 0.8) {
+                createObject("donut", "🍩");
+            } else {
+                let obsType = isOffice ? "🗄️" : "🌵";
+                createObject("obstacle", obsType);
+            }
+        }
+
+        function createObject(className, icon) {
+            const obj = document.createElement("div");
+            obj.classList.add(className, "move");
+            obj.innerText = icon;
+            gameArea.appendChild(obj);
+            
+            // Usuń z DOM po zakończeniu animacji
+            setTimeout(() => { if(obj.parentNode) obj.remove(); }, 2000);
+        }
+
+        function update() {
+            score++;
+            scoreDiv.innerText = "SCORE: " + Math.floor(score / 10);
+
+            let dRect = dino.getBoundingClientRect();
+
+            // Sprawdzanie kolizji dla wszystkich obiektów na ekranie
+            document.querySelectorAll(".obstacle, .donut").forEach(obj => {
+                let oRect = obj.getBoundingClientRect();
+
+                // Prosta detekcja kolizji (box-to-box)
+                if (dRect.left < oRect.right && dRect.right > oRect.left &&
+                    dRect.top < oRect.bottom && dRect.bottom > oRect.top) {
+                    
+                    if (obj.classList.contains("donut")) {
+                        activateOffice();
+                        obj.remove();
+                    } else {
+                        gameOver();
+                    }
+                }
+            });
+        }
+
+        function activateOffice() {
+            isOffice = true;
+            gameArea.classList.add("office-mode");
+            dino.innerText = "👨‍💼";
+            // Zmieniamy już istniejące kaktusy w szafki
+            document.querySelectorAll(".obstacle").forEach(o => o.innerText = "🗄️");
+        }
+
+        function gameOver() {
+            isAlive = false;
+            clearInterval(gameLoopInterval);
+            clearInterval(spawnInterval);
+            document.removeEventListener("keydown", handleInput);
+            document.getElementById("final-score").innerText = "WYNIK: " + Math.floor(score/10);
+            gameOverScreen.classList.remove("hidden");
+        }
+
+        function resetGame() {
+            document.querySelectorAll(".obstacle, .donut").forEach(o => o.remove());
+            startGame();
+        }
+    </script>
+</body>
+</html>
