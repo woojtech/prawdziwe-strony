@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <script>
+    let poprzedniScore = 0;
+    let nastepnyScore = 0;
+    let score = 0;
+
+    function updateLiczba(nowaWartosc) {
+      if (nowaWartosc === score) 
+        return;
+
+      poprzedniScore = score;
+      score = nowaWartosc;
+      const scoreboard = document.getElementById("scoreboard");
+      scoreboard.textContent = "liczba " + score;
+    }
+  </script>
+</head>
+
+<body>
+  <div id="scoreboard">liczba 0</div>
+  <button onclick="updateLiczba(score + 1)">liczba +</button>
+  <button onclick="updateLiczba(score - 1)">liczba -</button>
+  <button onclick="updateLiczba(score * 2)">liczba x</button>
+  <button onclick="updateLiczba(score / 2)">liczba /</button>
+  <button onclick="updateLiczba(score ** 2)">liczba ^</button>
+  <br/>
+  
+  <button onclick="updateLiczba(0)">reset</button>
+  <button onclick="updateLiczba(poprzedniScore)">poprzednia</button>
+
+
+</body>
+
+</html>
