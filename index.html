@@ -1,6 +1,9 @@
 <html>
   <head>
     <link rel="icon" type="image/png" href="./favicon.png"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 
     <title>Prawdziwe Strony</title>
 
@@ -16,6 +19,13 @@
         align-items: center;
         padding-bottom: 1.5em;
       }
+
+      body.font-vt323 {
+        font-family: "VT323", monospace;
+        font-weight: 400;
+        font-size: 17px;
+      }
+
       a {
         color: var(--link-color);
       }
@@ -62,18 +72,21 @@
         padding: 2px 0;
       }
 
-      .theme-btn {
+      .footer-btns {
         position: fixed;
         bottom: 1em;
         left: 1em;
-        border: none;
-        border-radius: 50%;
-        width: 2em;
-        height: 2em;
-        color: var(--link-color);
-        background: none;
-        zoom: 1.5;
-        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+
+        button {
+          border: none;
+          height: 2em;
+          color: var(--link-color);
+          background: none;
+          zoom: 1.5;
+          cursor: pointer;
+        }
       }
     </style>
     <script>
@@ -139,6 +152,9 @@
       Stronę wykonał: <b>wojtek (<a target="_blank" href="https://github.com/woojtech">github</a>)</b>
     </div>
 
-    <button class="theme-btn" onclick="toggleTheme()">☀︎</button>
+    <div class="footer-btns">
+      <button onclick="document.body.classList.toggle('font-vt323')" style="transform: rotateY(180deg);" title="Change font">✎ᝰ.</button> 
+      <button class="theme-btn" onclick="toggleTheme()">☀︎</button>
+    </div>
   </body>
 </html>
