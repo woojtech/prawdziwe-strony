@@ -5,13 +5,45 @@
     <title>Prawdziwe Strony</title>
 
     <style>
-      .links {
+      body {
+        --bg-color: rgb(255, 228, 179);
+        --link-color: rgb(39, 47, 163);
+        background: var(--bg-color);
+        color: rgb(41, 41, 41);
+
         display: flex;
         flex-direction: column;
-        align-items: flex-start;
+        align-items: center;
+        padding-bottom: 1.5em;
+      }
+      a {
+        color: var(--link-color);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        body[theme="auto"] {
+          --bg-color: rgb(41, 41, 41);
+          --link-color: rgb(225 227 255);
+          color: white;
+        }
+      }
+
+      body[theme="dark"] {
+        --bg-color: rgb(41, 41, 41);
+        --link-color: rgb(225 227 255);
+        color: white;
+      }
+
+      .links {
+        display: flex;
+        margin: 0 20%;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: stretch;
       }
       .links a {
-        color: rgb(44, 44, 187);
+        color: var(--link-color);
+        text-decoration: none;
         display: block;
         flex: none;
         margin: 0.3em;
@@ -20,9 +52,53 @@
         border-radius: 5px;
         background-color: #7184ee50;
       }
+
+      .footer {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        text-align: center;
+        background: var(--bg-color);
+        padding: 2px 0;
+      }
+
+      .theme-btn {
+        position: fixed;
+        bottom: 1em;
+        left: 1em;
+        border: none;
+        border-radius: 50%;
+        width: 2em;
+        height: 2em;
+        color: var(--link-color);
+        background: none;
+        zoom: 1.5;
+        cursor: pointer;
+      }
     </style>
+    <script>
+      themes = {
+        auto: { icon: '⚙︎', title:'System theme' },
+        light: { icon: '☀︎', title:'Light theme' },
+        dark: { icon: '⏾', title:'Dark theme' },
+      };
+      themeInd = 0;
+
+      function toggleTheme() {
+        themesList = Object.keys(themes);
+        themeInd = (themeInd + 1) % themesList.length;
+        theme = themesList[themeInd];
+        setTheme(theme);
+      }
+
+      function setTheme(theme) {
+        document.body.setAttribute('theme', theme);
+        document.querySelector('.theme-btn').textContent = themes[theme].icon;
+        document.querySelector('.theme-btn').title = themes[theme].title;
+      }
+    </script>
   </head>
-  <body style="background: rgb(255, 228, 179);">
+  <body onload="setTheme('auto')" theme="auto">
     <marquee behavior="alternate" scrollamount="10">Hello!</marquee>
     <p>
       Tutaj są różne strony.<br/>
@@ -57,10 +133,12 @@
       <a href="saper.html">Saper</a>
       <a href="statki.html">Statki</a>
       <a href="licznik.html">Dino game</a>
-    
-
-    <div style="position: fixed; bottom: 0; width: 100%; text-align: center;">
-      Stronę wykonał: <b>wojtek (github: woojtech)</b>
     </div>
+
+    <div class="footer">
+      Stronę wykonał: <b>wojtek (<a target="_blank" href="https://github.com/woojtech">github</a>)</b>
+    </div>
+
+    <button class="theme-btn" onclick="toggleTheme()">☀︎</button>
   </body>
 </html>
