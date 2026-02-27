@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Scratch</title>
+    <style>
+        body { text-align: center; background: #222; color: white; font-family: sans-serif; }
+        canvas { background: #fff; border: 5px solid #4a90e2; display: block; margin: 20px auto; }
+    </style>
+</head>
+<body>
+    <h1>prosty duszek</h1>
+    jego ruch jest ograniczony do obszaru<br>
+    <button onclick="alert('Poruszanie: strzałki lub W, A, S, D')">instrukcja</button>
+    <button onclick="sprite.x = 215; sprite.y = 155;">resetuj pozycję</button>
+    <button onclick="sprite.speed = 10;">przyspiesz</button>
+    <canvas id="stage" width="480" height="360"></canvas>
+
+    <script>
+        const canvas = document.getElementById('stage');
+        const ctx = canvas.getContext('2d');
+
+        let sprite = { x: 215, y: 155, size: 40, color: "#4a90e2", speed: 5 };
+        let keys = {}; // Przechowuje wciśnięte klawisze
+
+        window.addEventListener('keydown', e => keys[e.key] = true);
+        window.addEventListener('keyup', e => keys[e.key] = false);
+
+        function update() {
+            // Logika blokady (limitowanie pozycji x i y)
+            if (keys["ArrowRight"] && sprite.x < canvas.width - sprite.size) sprite.x += sprite.speed;
+            if (keys["ArrowLeft"] && sprite.x > 0) sprite.x -= sprite.speed;
+            if (keys["ArrowUp"] && sprite.y > 0) sprite.y -= sprite.speed;
+            if (keys["ArrowDown"] && sprite.y < canvas.height - sprite.size) sprite.y += sprite.speed;
+            if (keys["a"] && sprite.x < canvas.width - sprite.size) sprite.x += sprite.speed;
+            if (keys["d"] && sprite.x > 0) sprite.x -= sprite.speed;
+            if (keys["w"] && sprite.y > 0) sprite.y -= sprite.speed;
+            if (keys["s"] && sprite.y < canvas.height - sprite.size) sprite.y += sprite.speed;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = sprite.color;
+            ctx.fillRect(sprite.x, sprite.y, sprite.size, sprite.size);
+            
+            update();
+            requestAnimationFrame(draw); // Pętla gry
+        }
+
+        draw();
+    </script>
+</body>
+</html>
