@@ -88,6 +88,42 @@
           cursor: pointer;
         }
       }
+
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1000;
+      }
+
+      .modal-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(5px);
+      }
+
+      .modal-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      .modal-content img {
+        max-width: 100%;
+        height: auto;
+      }
     </style>
     <script>
       themes = {
@@ -108,6 +144,14 @@
         document.body.setAttribute('theme', theme);
         document.querySelector('.theme-btn').textContent = themes[theme].icon;
         document.querySelector('.theme-btn').title = themes[theme].title;
+      }
+
+      function showQRModal() {
+        document.getElementById('qr-modal').style.display = 'block';
+      }
+
+      function hideQRModal() {
+        document.getElementById('qr-modal').style.display = 'none';
       }
     </script>
   </head>
@@ -153,8 +197,16 @@
       Stronę wykonał: <b>wojtek (<a target="_blank" href="https://github.com/woojtech">github</a>)</b>
     </div>
 
+    <div id="qr-modal" class="modal">
+      <div class="modal-overlay" onclick="hideQRModal()"></div>
+      <div class="modal-content">
+        <img src="qr.png" alt="QR Code">
+      </div>
+    </div>
+
     <div class="footer-btns">
-            <button onclick="alert('⚠️uBO lite nie pozwolił załadować się następującej stronie: https://a.pub.network⚠️')">AD</button>
+      <button onclick="showQRModal()" title="Show QR Code">⛶</button>
+      <button title="Show Ads" onclick="alert('⚠️uBO lite nie pozwolił załadować się następującej stronie: https://a.pub.network⚠️')">AD</button>
       <button onclick="document.body.classList.toggle('font-vt323')" style="transform: rotateY(180deg);" title="Change font">✎ᝰ.</button> 
       <button class="theme-btn" onclick="toggleTheme()">☀︎</button>
     </div>
