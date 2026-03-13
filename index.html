@@ -1,4 +1,4 @@
-<html>
+<html lang="pl">
   <head>
     <link rel="icon" type="image/png" href="./favicon.png"/>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -94,14 +94,19 @@
         position: relative;
         width: 100vw;
         white-space: nowrap;
+        
+        span {
+          display: inline-block;
+          animation: slide 10s infinite alternate ease-in-out;
+          cursor: pointer;
+
+          &.paused {
+            animation-play-state: paused;
+          }
+        }
       }
 
-      .marquee span {
-        display: inline-block;
-        animation: slide 10s infinite alternate ease-in-out;
-      }
-
-      @keyframes slide {
+      @keyframes slide {        
         0% { transform: translateX(0); }
         100% { transform: translateX(calc(100vw - 100%)); }
       }
@@ -144,9 +149,9 @@
     </style>
     <script>
       themes = {
-        auto: { icon: '⚙︎', title:'System theme' },
-        light: { icon: '☀︎', title:'Light theme' },
-        dark: { icon: '⏾', title:'Dark theme' },
+        auto: { icon: '⚙︎', title:'Motyw systemowy' },
+        light: { icon: '☀︎', title:'Jasny motyw' },
+        dark: { icon: '⏾', title:'Ciemny motyw' },
       };
       themeInd = 0;
 
@@ -173,14 +178,17 @@
     </script>
   </head>
   <body onload="setTheme('auto')" theme="auto">
-    <div class="marquee"><span>Hello!</span></div>
+    <div class="marquee">
+      <span onmousedown="this.classList.toggle('paused');">Hello!</span>
+    </div>
+
     <p>
       Tutaj są różne strony.<br/>
       Zobacz sobie!
     </p>
 
     <div class="links">
-      <a target="_blank" href="https://scratch.mit.edu/explore/projects/animations/popular">Go to the Scratch website</a>
+      <a target="_blank" href="https://scratch.mit.edu/explore/projects/animations/popular">Otwórz stronę Scratch</a>
       <a href="inne.html">Inne</a>
       <a href="rob_co_chcesz.html">Rób co chcesz!</a>
       <a href="g.html">Google! (beta)</a>
@@ -208,7 +216,7 @@
       <a href="statki.html">Statki</a>
       <a href="licznik.html">Dino game</a>
       <a href="cos.html">zła strona</a>
-      </div>
+    </div>
 
     <div class="footer">
       Stronę wykonał: <b>wojtek (<a target="_blank" href="https://github.com/woojtech">github</a>)</b>
@@ -222,9 +230,9 @@
     </div>
 
     <div class="footer-btns">
-      <button onclick="showQRModal()" title="Show QR Code">⛶</button>
-      <button title="Show Ads" onclick="alert('⚠️uBO lite nie pozwolił załadować się następującej stronie: https://a.pub.network⚠️')">AD</button>
-      <button onclick="document.body.classList.toggle('font-vt323')" style="transform: rotateY(180deg);" title="Change font">✎ᝰ.</button> 
+      <button onclick="showQRModal()" title="Pokaż QR Code">⛶</button>
+      <button title="Pokaż reklamę" translate="no" onclick="alert('⚠️uBO lite nie pozwolił załadować się następującej stronie: https://a.pub.network⚠️')">AD</button>
+      <button onclick="document.body.classList.toggle('font-vt323')" style="transform: rotateY(180deg);" title="Zmień czcionkę">✎ᝰ.</button> 
       <button class="theme-btn" onclick="toggleTheme()">☀︎</button>
     </div>
   </body>
