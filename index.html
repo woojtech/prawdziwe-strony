@@ -89,6 +89,23 @@
         }
       }
 
+      .marquee {
+        overflow: hidden;
+        position: relative;
+        width: 100vw;
+        white-space: nowrap;
+      }
+
+      .marquee span {
+        display: inline-block;
+        animation: slide 10s infinite alternate ease-in-out;
+      }
+
+      @keyframes slide {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(calc(100vw - 100%)); }
+      }
+
       .modal {
         display: none;
         position: fixed;
@@ -156,7 +173,7 @@
     </script>
   </head>
   <body onload="setTheme('auto')" theme="auto">
-    <marquee behavior="alternate" scrollamount="10">Hello!</marquee>
+    <div class="marquee"><span>Hello!</span></div>
     <p>
       Tutaj są różne strony.<br/>
       Zobacz sobie!
