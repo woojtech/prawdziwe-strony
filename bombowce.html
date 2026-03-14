@@ -112,10 +112,10 @@ function spawnEnemy() {
 setInterval(spawnEnemy, 900);
 
 function update() {
-    if (keys['w'] && player.y > 20) player.y -= player.speed;
-    if (keys['s'] && player.y < canvas.height - 20) player.y += player.speed;
-    if (keys['a'] && player.x > 20) player.x -= player.speed;
-    if (keys['d'] && player.x < canvas.width - 20) player.x += player.speed;
+    if ((keys['w'] || keys['arrowup']) && player.y > 20) player.y -= player.speed;
+    if ((keys['s'] || keys['arrowdown']) && player.y < canvas.height - 20) player.y += player.speed;
+    if ((keys['a'] || keys['arrowleft']) && player.x > 20) player.x -= player.speed;
+    if ((keys['d'] || keys['arrowright']) && player.x < canvas.width - 20) player.x += player.speed;
 
     for (let i = enemies.length - 1; i >= 0; i--) {
         const e = enemies[i];
