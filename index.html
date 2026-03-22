@@ -51,7 +51,7 @@
         justify-content: center;
         align-items: stretch;
       }
-      .links a {
+      .links a, .link {
         color: var(--link-color);
         text-decoration: none;
         display: block;
@@ -61,6 +61,11 @@
         border: 1px solid rgb(44, 44, 187);
         border-radius: 5px;
         background-color: #7184ee50;
+      }
+
+      .link.important {
+        border-color: rgb(187, 44, 44);
+        background-color: #ee717150;
       }
 
       .footer {
@@ -182,6 +187,7 @@
       <span onmousedown="this.classList.toggle('paused');">Hello!</span>
     </div>
 
+    <button class="link important" onclick="alert('prosimy o włączenie tej strony na komputerach, PC, laptopach, tabletach i innych urządzeniach przemysłowych bo będzie leprza grafika, jak was nie opchodzi grafika to możesz na wszystkich urządzeniach.')">ważna informacja</button>
     <p>
       Tutaj są różne strony.<br/>
       Zobacz sobie!
