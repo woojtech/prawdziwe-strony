@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Generator Przygód</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            background-color: #e8f5e9; 
+            margin: 0;
+        }
+        #pole-tekstowe { 
+            font-size: 1.8rem; 
+            margin-bottom: 30px; 
+            color: #2e7d32; 
+            text-align: center; 
+            padding: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            min-width: 300px;
+        }
+        button { 
+            padding: 15px 40px; 
+            font-size: 1.2rem; 
+            cursor: pointer; 
+            background-color: #2e7d32; 
+            color: white; 
+            border: none; 
+            border-radius: 50px; 
+            transition: transform 0.2s, background 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        button:hover { 
+            background-color: #1b5e20; 
+            transform: scale(1.05);
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Miejsce wyświetlania wylosowanego zdania -->
+     gra tekstowa
+    <div id="pole-tekstowe">Kliknij, aby stworzyć historię!</div>
+
+    <!-- Przycisk wyzwalający losowanie -->
+    <button onclick="generujZdanie()">Losuj zdanie</button>
+
+    <script>
+        function generujZdanie() {
+            // Części składowe zdań
+            const kto = ["Dzielny rycerz", "Mały robot", "Szybki smok", "Wesoły odkrywca", "Tajemniczy mag", "Złoty kot"];
+            const co_robi = ["znajduje", "widzi", "dogania", "przeskakuje nad", "podziwia", "ratuje"];
+            const co = ["magiczny kryształ", "ukryty skarb", "stary dąb", "latający dywan", "pyszną szarlotkę", "śpiącego trolla"];
+
+            // Losowanie indeksów
+            const los1 = Math.floor(Math.random() * kto.length);
+            const los2 = Math.floor(Math.random() * co_robi.length);
+            const los3 = Math.floor(Math.random() * co.length);
+
+            // Łączenie w jedno zdanie
+            const wynik = kto[los1] + " " + co_robi[los2] + " " + co[los3] + ".";
+
+            // Wyświetlenie na stronie
+            document.getElementById("pole-tekstowe").innerText = wynik;
+        }
+    </script>
+
+</body>
+</html>
+
+
