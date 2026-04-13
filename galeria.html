@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Galeria zdjęć</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #333;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .gallery-item {
+      cursor: pointer;
+      overflow: hidden;
+      border-radius: 8px;
+      background-color: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .gallery-item:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .gallery-item img {
+      width: 100%;
+      height: 200px;
+      object-fit: scale-down;
+      display: block;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      position: relative;
+      max-width: 90vw;
+      max-height: 90vh;
+      background-color: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .modal-image {
+      max-width: 100%;
+      max-height: 80vh;
+      object-fit: contain;
+    }
+
+    .modal-pre {
+      max-width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      margin: 0.5em;
+      font-size: 14px;
+      color: #333;
+      display: none;
+    }
+
+    .modal-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      padding: 15px 20px;
+      background-color: #f9f9f9;
+      gap: 20px;
+    }
+
+    .modal-button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .modal-button:hover {
+      background-color: #0056b3;
+    }
+     .on-information {
+      background-color: #ff0000;
+      color: rgb(0, 0, 0);
+      border: 3px solid #9c3333;
+      padding: 10px 16px;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .modal-button.close {
+      background-color: #dc3545;
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 8px 12px;
+      font-size: 18px;
+    }
+
+    .modal-button.close:hover {
+      background-color: #c82333;
+    }
+
+    .nav-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    .image-counter {
+      font-size: 14px;
+      color: #666;
+      min-width: 60px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Galeria zdjęć</h1>
+  <button class="on-information" onclick="alert('prosimy o nie zwększanie zakłatki powyżej 75%! ')">ważna informacja</button>
+  <div class="gallery" id="gallery"></div>
+
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <button class="modal-button close" id="closeBtn">&times;</button>
+      <img class="modal-image" id="modalImage" src="" alt="">
+      <pre class="modal-pre" id="modalPre"></pre>
+      <div class="modal-controls">
+        <button class="modal-button" id="prevBtn">&lt;</button>
+        <span class="image-counter"><span id="current">1</span>/<span id="total">1</span></span>
+        <button class="modal-button" id="nextBtn">&gt;</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let images = [];
+    let imagesDetails = [];
+    let currentIndex = 0;
+
+    // Załaduj listę zdjęć
+    async function loadGallery() {
+      try {
+        const response = await fetch('images.json');
+        images = await response.json();
+        renderGallery();
+      } catch (error) {
+        console.error('Błąd przy ładowaniu galerii:', error);
+      }
+    }
+
+    function renderGallery() {
+      const gallery = document.getElementById('gallery');
+      gallery.innerHTML = '';
+      images.forEach((filePath, index) => {
+        const fileName = filePath.split('/').pop();
+        isText = fileName.toLowerCase().endsWith('.txt');
+        imagesDetails.push({ filePath, fileName, isText });
+        
+        const item = document.createElement('div');
+        item.className = 'gallery-item';
+
+        if (isText) {
+          fetch(filePath)
+            .then(response => response.text())
+            .then(text => {
+              imagesDetails[index].text = text;
+              item.innerHTML = `<pre>${text}</pre>`;
+            })
+            .catch(error => console.error('Błąd przy ładowaniu tekstu:', error));
+        } else {
+          item.innerHTML = `<img src="${filePath}" alt="${fileName}">`;
+        }
+        
+        item.addEventListener('click', () => openModal(index));
+        gallery.appendChild(item);
+      });
+    }
+
+    function openModal(index) {
+      currentIndex = index;
+      document.getElementById('modal').classList.add('active');
+      updateModalImage();
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.remove('active');
+    }
+
+    function updateModalImage() {
+      const imageDetail = imagesDetails[currentIndex];
+      if (imageDetail.isText) {
+        document.getElementById('modalImage').style.display = 'none';
+        document.getElementById('modalPre').style.display = 'block';
+        document.getElementById('modalPre').textContent = imageDetail.text;
+      } else {
+        document.getElementById('modalImage').style.display = 'block';
+        document.getElementById('modalImage').src = images[currentIndex];
+        document.getElementById('modalPre').style.display = 'none';
+      }
+      document.getElementById('current').textContent = currentIndex + 1;
+      document.getElementById('total').textContent = images.length;
+    }
+
+    function nextImage() {
+      currentIndex = (currentIndex + 1) % images.length;
+      updateModalImage();
+    }
+
+    function prevImage() {
+      currentIndex = (currentIndex - 1 + images.length) % images.length;
+      updateModalImage();
+    }
+
+    // Event listeners
+    document.getElementById('closeBtn').addEventListener('click', closeModal);
+    document.getElementById('nextBtn').addEventListener('click', nextImage);
+    document.getElementById('prevBtn').addEventListener('click', prevImage);
+    document.getElementById('modal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('modal')) closeModal();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (document.getElementById('modal').classList.contains('active')) {
+        if (e.key === 'ArrowRight') nextImage();
+        if (e.key === 'ArrowLeft') prevImage();
+        if (e.key === 'Escape') closeModal();
+      }
+    });
+
+    loadGallery();
+  </script>
+</body>
+</html>
