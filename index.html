@@ -184,6 +184,20 @@
       function hideQRModal() {
         document.getElementById('qr-modal').style.display = 'none';
       }
+
+      function daysToBDay(day, month) {
+        const d = new Date();
+        if ((d.getMonth() + 1) === month && d.getDate() === day) {
+          return 0;
+        }
+        
+        let bDay = new Date(`${d.getFullYear()}-${month}-${day}`);
+        if (bDay < d) {
+          bDay = new Date(`${d.getFullYear() + 1}-${month}-${day}`);
+        }
+
+        return Math.ceil((bDay.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+      }
     </script>
   </head>
   <body onload="setTheme('auto')" theme="auto">
@@ -230,9 +244,22 @@
       <a href="gra-tekstowa.html">gra tekstowa</a>
       <a href="galeria.html">galeria zdjęć</a>
     </div>
-       🎂dziś autor ma  urodziny, rzyczę dobrego tortu!🎂
+
     <div class="footer">
       Stronę wykonał: <b>wojtek (<a target="_blank" href="https://github.com/woojtech">github</a>)</b>
+      
+      <div id="bdayContainer"></div>
+      <script>
+        const daysToWojtekBDay = daysToBDay(22, 4);
+        if (daysToWojtekBDay === 0) {
+          document.getElementById('bdayContainer').textContent = 'Dziś są moje urodziny! 🎉';
+        } else {
+          const words = daysToWojtekBDay === 1 ? 'został tylko 1 dzień' :
+            daysToWojtekBDay >= 2 && daysToWojtekBDay <= 4 ? `zostały ${daysToWojtekBDay} dni`
+            : `zostało ${daysToWojtekBDay} dni`;
+          document.getElementById('bdayContainer').textContent = `Do moich urodzin ${words}! 🎂`;
+        }
+      </script>
     </div>
 
     <div id="qr-modal" class="modal">
