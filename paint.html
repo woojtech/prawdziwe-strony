@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Paint</title>
+    <link rel="icon" type="image/png" href="./favicon.png"/>
     <style>
         body { text-align: center; font-family: sans-serif; background: #f0f0f0; margin: 20px; }
         canvas { border: 2px solid #000; background: #fff; cursor: crosshair; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
@@ -49,9 +50,12 @@
         }
 
         function startPosition(e) {
+            e.preventDefault(); // Zapobiegaj domyślnym zachowaniom (np. przewijaniu na dotyku)
             const rect = canvas.getBoundingClientRect();
-            startX = e.clientX - rect.left;
-            startY = e.clientY - rect.top;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            startX = clientX - rect.left;
+            startY = clientY - rect.top;
 
             if (tool === 'text') {
                 addText(startX, startY);
@@ -71,9 +75,12 @@
         function draw(e) {
             if (!painting) return;
 
+            e.preventDefault(); // Zapobiegaj domyślnym zachowaniom na dotyku
             const rect = canvas.getBoundingClientRect();
-            const currentX = e.clientX - rect.left;
-            const currentY = e.clientY - rect.top;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const currentX = clientX - rect.left;
+            const currentY = clientY - rect.top;
             const size = document.getElementById('lineWidth').value;
 
             ctx.lineWidth = size;
@@ -115,6 +122,11 @@
         canvas.addEventListener('mousedown', startPosition);
         canvas.addEventListener('mousemove', draw);
         window.addEventListener('mouseup', finishedPosition);
+
+        // Dodaj obsługę dotyku
+        canvas.addEventListener('touchstart', startPosition);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', finishedPosition);
     </script>
 
 </body>

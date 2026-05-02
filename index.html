@@ -45,6 +45,21 @@
         color: white;
       }
 
+      #time-counter {
+        position: fixed;
+        top: 30px;
+        left: 5px;
+        background-color: rgba(0, 0, 0, 0.5);
+        color: #fff;
+        padding: 5px 10px;
+        border-radius: 5px; 
+        font-size: 14px;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
       .links {
         display: flex;
         margin: 0 max(20%, 65px);
@@ -199,36 +214,64 @@
         return Math.ceil((bDay.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
       }
     </script>
+
+    <script>
+      function renderTimer() {
+        const pageTime = (Date.now() - pageVisitTime) / 1000; // czas w sekundach
+
+        let hours = Math.floor(pageTime / 3600);
+        let minutes = Math.floor((pageTime % 3600) / 60);
+        let seconds = Math.floor(pageTime % 60);
+
+        document.getElementById("timer").innerText = [hours, minutes, seconds]
+          // Formatowanie, aby zawsze były dwie cyfry (np. 01 zamiast 1)
+          .map(unit => String(unit).padStart(2, '0'))
+          .join(':');
+      }
+    </script>
   </head>
   <body onload="setTheme('auto')" theme="auto">
     <div class="marquee">
       <span onmousedown="this.classList.toggle('paused');">Hello!</span>
     </div>
      <div id="time-counter">
-  
-</div>
+        <div>Czas na stronie:</div>
+        <div id="timer">00:00:00</div>
+    </div>
+    <script>
+      let pageVisitTime = parseInt(sessionStorage.getItem('pageVisitTime') || '0');
+      if (!pageVisitTime) {
+        pageVisitTime = Date.now();
+        sessionStorage.setItem('pageVisitTime', pageVisitTime);
+      }
+      renderTimer();
+      setInterval(() => renderTimer(), 1000);
+    </script>
 
     <button class="link important" onclick="alert('prosimy o włączenie tej strony na komputerach, PC, laptopach i innych urządzeniach z klawiaturą żeby dało się grać w gry')">ważna informacja</button>
     <p>
       Tutaj są różne strony.<br/>
       Zobacz sobie!
     </p>
-
     <div class="links">
-      <a target="_blank" href="https://scratch.mit.edu/users/fastwojtek/">zobocz mój profil Scratch</a>
-      <a href="inne.html">Inne</a>
-      <a href="rob_co_chcesz.html">Rób co chcesz!</a>
-      <a href="g.html">Google! (beta)</a>
+      <a href="Google.html">Google! (beta)</a>
       <a href="radio.html">radio Polsat</a>
-      <a href="gra-t.html">kalkulator</a>
-      <a href="strona-AI.html">strona AI</a>
-      <a href="paint.html">paint</a>
+      <a href="inne.html">Inne</a>
+      <a target="_blank" href="https://scratch.mit.edu/users/fastwojtek/">zobocz mój profil Scratch</a>
       <a href="https://bluejacoob.github.io/me/">strona mojego brata</a>
+    </div>
+
+    <h2>Narzędzia</h2>
+    <div class="links">
+      <a href="rob_co_chcesz.html">notatnik</a>
+      <a href="paint.html">paint</a>
+      <a href="kalkulator.html">kalkulator</a>
+      <a href="galeria.html">galeria zdjęć</a>
     </div>
 
     <h2>Gry</h2>
     <div class="links">
-      <a href="gra.html">kliknij piłkę</a>
+      <a href="kliknij-pilke.html">kliknij piłkę</a>
       <a href="ping-pong.html">ping-pong</a>
       <a href="zbieracz_gwiazdek.html">zbieracz gwiazdek</a>
       <a href="astro_stszelec.html">astro strzelec</a>
@@ -238,7 +281,7 @@
       <a href="30-kwadratow.html">kliknij trzydziesci kwadratów</a></a>
       <a href="snws2.html">Symulator Nurkowania w Szambie</a>
       <a href="dom.html">Architekt Wnętrz</a>
-      <a href="qwerty.html">Flappy Bird</a>
+      <a href="flappy-bird.html">Flappy Bird</a>
       <a href="tetris.html">Tetris</a>
       <a href="filmy.html">Movie Tycoon</a>
       <a href="saper.html">Saper</a>
@@ -246,7 +289,7 @@
       <a href="licznik.html">Dino game</a>
       <a href="cos.html">zła strona</a>
       <a href="gra-tekstowa.html">gra tekstowa</a>
-      <a href="galeria.html">galeria zdjęć</a>
+      <a href="strona-AI.html">strona AI</a>
     </div>
 
     <div class="footer">
