@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doodle Jump - Menu & Instrukcja</title>
+    <style>
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #1a1a1a; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        canvas { background: #fafafa; border-radius: 8px; box-shadow: 0 0 40px rgba(0,0,0,0.6); }
+    </style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Stany: 'MENU', 'HOW_TO', 'PLAYING', 'GAMEOVER'
+    let gameState = 'MENU';
+    let score = 0;
+    let highScore = localStorage.getItem('highScore') || 0;
+    
+    const player = {
+        x: 200, y: 300, width: 30, height: 30,
+        vy: 0, vx: 0, jumpStrength: -10, gravity: 0.3
+    };
+
+    let platforms = [];
+    
+    // Definicje przycisków (x, y, szerokość, wysokość)
+    const btnStart = { x: 100, y: 250, w: 200, h: 50 };
+    const btnHowTo = { x: 100, y: 320, w: 200, h: 50 };
+    const btnBack = { x: 100, y: 450, w: 200, h: 50 };
+
+    function initGame() {
+        score = 0;
+        player.x = 200; player.y = 300; player.vy = 0;
+        platforms = [];
+        for (let i = 0; i < 7; i++) spawnPlatform((canvas.height / 7) * i);
+        gameState = 'PLAYING';
+    }
+
+    function spawnPlatform(yValue) {
+        const typeRand = Math.random();
+        let type = 'normal';
+        if (typeRand > 0.8) type = 'moving';
+        else if (typeRand > 0.6) type = 'breakable';
+
+        platforms.push({
+            x: Math.random() * (canvas.width - 60),
+            y: yValue,
+            width: 60, height: 12,
+            type: type,
+            speed: (Math.random() - 0.5) * 4,
+            broken: false
+        });
+    }
+
+    const keys = {};
+    window.addEventListener('keydown', e => keys[e.code] = true);
+    window.addEventListener('keyup', e => keys[e.code] = false);
+    
+    canvas.addEventListener('mousedown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        if (gameState === 'MENU') {
+            if (mx > btnStart.x && mx < btnStart.x + btnStart.w && my > btnStart.y && my < btnStart.y + btnStart.h) initGame();
+            if (mx > btnHowTo.x && mx < btnHowTo.x + btnHowTo.w && my > btnHowTo.y && my < btnHowTo.y + btnHowTo.h) gameState = 'HOW_TO';
+        } 
+        else if (gameState === 'HOW_TO') {
+            if (mx > btnBack.x && mx < btnBack.x + btnBack.w && my > btnBack.y && my < btnBack.y + btnBack.h) gameState = 'MENU';
+        }
+        else if (gameState === 'GAMEOVER') {
+            initGame();
+        }
+    });
+
+    function update() {
+        if (gameState !== 'PLAYING') return;
+
+        if (keys['ArrowLeft']) player.vx = -6;
+        else if (keys['ArrowRight']) player.vx = 6;
+        else player.vx *= 0.8;
+
+        player.x += player.vx;
+        player.vy += player.gravity;
+        player.y += player.vy;
+
+        if (player.x + player.width < 0) player.x = canvas.width;
+        if (player.x > canvas.width) player.x = -player.width;
+
+        if (player.y < canvas.height / 2) {
+            let diff = canvas.height / 2 - player.y;
+            player.y = canvas.height / 2;
+            score += Math.floor(diff/10);
+            platforms.forEach((p, i) => {
+                p.y += diff;
+                if (p.y > canvas.height) { platforms.splice(i, 1); spawnPlatform(0); }
+            });
+        }
+
+        platforms.forEach(p => {
+            if (p.type === 'moving') {
+                p.x += p.speed;
+                if (p.x <= 0 || p.x + p.width >= canvas.width) p.speed *= -1;
+            }
+            if (player.vy > 0 && !p.broken && player.x < p.x + p.width && player.x + player.width > p.x &&
+                player.y + player.height > p.y && player.y + player.height < p.y + p.height + player.vy) {
+                player.vy = player.jumpStrength;
+                if (p.type === 'breakable') p.broken = true;
+            }
+        });
+
+        if (player.y > canvas.height) {
+            gameState = 'GAMEOVER';
+            if (score > highScore) { highScore = score; localStorage.setItem('highScore', highScore); }
+        }
+    }
+
+    function drawButton(btn, text, color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(btn.x, btn.y, btn.w, btn.h);
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 18px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(text, btn.x + btn.w/2, btn.y + 32);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (gameState === 'MENU') {
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 40px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('DOODLE JUMP', canvas.width/2, 150);
+            drawButton(btnStart, 'START', '#2ed573');
+            drawButton(btnHowTo, 'INSTRUKCJA', '#1e90ff');
+        } 
+        else if (gameState === 'HOW_TO') {
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 30px Arial';
+            ctx.fillText('JAK GRAĆ?', canvas.width/2, 100);
+            ctx.font = '16px Arial';
+            ctx.fillText('• Używaj STRZAŁEK do ruchu', canvas.width/2, 180);
+            ctx.fillText('• Skacz po platformach', canvas.width/2, 220);
+            ctx.fillStyle = '#8B4513';
+            ctx.fillText('• BRĄZOWE kłody pękają!', canvas.width/2, 260);
+            ctx.fillStyle = '#333';
+            ctx.fillStyle = '#1e90ff';
+            ctx.fillText('• NIEBIESKIE się ruszają!', canvas.width/2, 280);
+            ctx.fillStyle = 'green';
+            ctx.fillText('• zielone są bezpieczne', canvas.width/2, 300);
+            ctx.fillStyle = '#ff4757';
+            ctx.fillText('• Nie spadnij w dół!', canvas.width/2, 340);
+            drawButton(btnBack, 'WRÓĆ', '#ff4757');
+        }
+        else {
+            platforms.forEach(p => {
+                if (p.broken) return;
+                ctx.fillStyle = p.type === 'normal' ? '#2ed573' : (p.type === 'moving' ? '#1e90ff' : '#8B4513');
+                ctx.fillRect(p.x, p.y, p.width, p.height);
+            });
+            ctx.fillStyle = '#ff4757';
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            ctx.fillStyle = '#333';
+            ctx.textAlign = 'left';
+            ctx.fillText(`PUNKTY: ${score}`, 15, 30);
+
+            if (gameState === 'GAMEOVER') {
+                ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = 'red';
+                ctx.fillText('KONIEC GRY :( ', canvas.width/2, 280);
+                ctx.fillStyle = 'white';
+                ctx.fillText(`WYNIK: ${score}`, canvas.width/2, 320);
+                ctx.font = '14px Arial';
+                ctx.fillStyle = 'green';
+                ctx.fillText('Kliknij, aby restartować', canvas.width/2, 380);
+            }
+        }
+    }
+
+    function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
+    gameLoop();
+</script>
+</body>
+</html>
