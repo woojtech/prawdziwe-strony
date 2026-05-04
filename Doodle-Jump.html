@@ -2,8 +2,9 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="./favicon.png"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Doodle Jump - Menu & Instrukcja</title>
+    <title>Doodle Jump</title>
     <style>
         body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #1a1a1a; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
         canvas { background: #fafafa; border-radius: 8px; box-shadow: 0 0 40px rgba(0,0,0,0.6); }
@@ -96,11 +97,15 @@
         if (player.y < canvas.height / 2) {
             let diff = canvas.height / 2 - player.y;
             player.y = canvas.height / 2;
-            score += Math.floor(diff/10);
-            platforms.forEach((p, i) => {
+            score += Math.max(1, Math.floor(diff / 10));
+            for (let i = platforms.length - 1; i >= 0; i--) {
+                const p = platforms[i];
                 p.y += diff;
-                if (p.y > canvas.height) { platforms.splice(i, 1); spawnPlatform(0); }
-            });
+                if (p.y > canvas.height) {
+                    platforms.splice(i, 1);
+                    spawnPlatform(0);
+                }
+            }
         }
 
         platforms.forEach(p => {
@@ -168,6 +173,7 @@
             ctx.fillStyle = '#ff4757';
             ctx.fillRect(player.x, player.y, player.width, player.height);
             ctx.fillStyle = '#333';
+            ctx.font = '16px Arial';
             ctx.textAlign = 'left';
             ctx.fillText(`PUNKTY: ${score}`, 15, 30);
 
