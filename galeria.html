@@ -184,7 +184,7 @@
     // Załaduj listę zdjęć
     async function loadGallery() {
       try {
-        const response = await fetch('images.json');
+        const response = await fetch('resources/galeria.json');
         images = await response.json();
         renderGallery();
       } catch (error) {

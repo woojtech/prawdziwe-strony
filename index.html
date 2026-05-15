@@ -5,6 +5,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.js.iife.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.css">
     
     <title>Prawdziwe Strony</title>
 
@@ -18,7 +20,7 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding-bottom: 1.5em;
+        padding-bottom: 2.5em;
       }
 
       body.font-vt323 {
@@ -51,7 +53,7 @@
         left: 5px;
         background-color: rgba(0, 0, 0, 0.5);
         color: #fff;
-        padding: 5px 10px;
+        padding: 0.5em;
         border-radius: 5px; 
         font-size: 14px;
         z-index: 1000;
@@ -60,9 +62,13 @@
         align-items: center;
       }
 
-      .links {
+      #timer {
+        margin-top: 0.5em;    
+      }
+
+      .center-section {
         display: flex;
-        margin: 0 max(20%, 65px);
+        margin: 0 max(20%, 46px);
         flex-wrap: wrap;
         justify-content: center;
         align-items: stretch;
@@ -89,19 +95,19 @@
       .footer {
         position: fixed;
         bottom: 0;
-        width: 100%;
         text-align: center;
         background: var(--bg-color);
         padding: 2px 0;
+        margin: 0 max(20%, 46px);
       }
 
-      .footer-btns {
+      .side-buttons {
         position: fixed;
         bottom: 1em;
         left: 1em;
         display: flex;
         flex-direction: column;
-        max-width: 65px;
+        max-width: 46px;
 
         button {
           border: none;
@@ -223,6 +229,18 @@
         let minutes = Math.floor((pageTime % 3600) / 60);
         let seconds = Math.floor(pageTime % 60);
 
+        const rotateEverySeconds = 30;
+        if (seconds % rotateEverySeconds == 0 && pageTime > 0) {
+          const hourglassEl = document.getElementById("hourglass");
+          // hourglassEl.classList.add("rotate-once");
+          hourglassEl.style.transition = 'transform 1s ease';
+          hourglassEl.style.transform = 'rotate(360deg)';
+          setTimeout(() => {
+            hourglassEl.style.transition = '';
+            hourglassEl.style.transform = '';
+          }, 1000);
+        }
+
         document.getElementById("timer").innerText = [hours, minutes, seconds]
           // Formatowanie, aby zawsze były dwie cyfry (np. 01 zamiast 1)
           .map(unit => String(unit).padStart(2, '0'))
@@ -231,13 +249,20 @@
     </script>
   </head>
   <body onload="setTheme('auto')" theme="auto">
+
+    <main>
+      
+    </main>
     <div class="marquee">
       <span onmousedown="this.classList.toggle('paused');">Hello!</span>
     </div>
-     <div id="time-counter">
-        <div>Czas na stronie:</div>
+     <div id="time-counter" title="Czas spędzony na stronie">
+        <div id="hourglass">⌛</div>
         <div id="timer">00:00:00</div>
     </div>
+    <button id="help-btn" style="position: fixed; top: 30px; right: 5px; background: none; border: none; cursor: pointer; z-index: 1000;">
+      <img src="resources/avatar.png" alt="Pomoc" style="width: 40px; height: 40px; border-radius: 50%;">
+    </button>
     <script>
       let pageVisitTime = parseInt(sessionStorage.getItem('pageVisitTime') || '0');
       if (!pageVisitTime) {
@@ -251,10 +276,9 @@
     <button class="link important" onclick="alert('prosimy o włączenie tej strony na komputerach, PC, laptopach i innych urządzeniach z klawiaturą żeby dało się grać w gry')">ważna informacja</button>
     <button onclick="alert('witaj na prawdziwe strony! ta strona jest jeszcze nie skończona, ale wtrakcie tego możesz z niej korzystać!🤗')">prawdziwe strony</button> 
     <p>
-      Tutaj są różne strony.<br/>
-      Zobacz sobie!
+      Tutaj są różne strony. Zobacz sobie!
     </p>
-    <div class="links">
+    <div id="links-other" class="center-section links">
       <a href="Google.html">Google! (beta)</a>
       <a href="radio.html">radio Polsat</a>
       <a href="inne.html">Inne</a>
@@ -263,7 +287,7 @@
     </div>
 
     <h2>Narzędzia</h2>
-    <div class="links">
+    <div id="links-tools" class="center-section links">
       <a href="rob_co_chcesz.html">notatnik</a>
       <a href="paint.html">paint</a>
       <a href="kalkulator.html">kalkulator</a>
@@ -271,7 +295,7 @@
     </div>
 
     <h2>Gry</h2>
-    <div class="links">
+    <div id="links-games" class="center-section links">
       <a href="kliknij-pilke.html">kliknij piłkę</a>
       <a href="ping-pong.html">ping-pong</a>
       <a href="zbieracz_gwiazdek.html">zbieracz gwiazdek</a>
@@ -314,19 +338,103 @@
     <div id="qr-modal" class="modal">
       <div class="modal-overlay" onclick="hideQRModal()"></div>
       <div class="modal-content">
-        <img src="qr.png" alt="QR Code">
+        <img src="resources/qr.png" alt="QR Code">
       </div>
     </div>
 
-    <div class="footer-btns">
+    <div class="side-buttons">
       <button title="instrukcja użytkowania" onclick="alert('instrukcja użytkowania: niebieskie przyciski są do innych stron, czerwony da ci ważną infrmację, licznik na czarnym tle pokazuje ile byłeś na stronie, na dole ekranu są informację o ałtorze a w lewym dolnym rogu są ustawienia')">❓</button>
-      <button title="płatność" onclick="alert('strona jest na szczęście bezpłatna🤗')"></tool_call></tool_call>𝄂𝄂𝄀𝄁</tool_call>𝄂𝄂</tool_call></button>
-      <button title="wersja strony" onclick="alert('wersja 1.42.65')">ⓘ</button>
+      <button title="płatność" onclick="alert('strona jest na szczęście bezpłatna🤗')">💳</button>
+      <button title="wersja strony" onclick="alert('wersja 1.42.65-beta18-build#a6398de6b35')">ⓘ</button>
       <button onclick="alert('nie ma tu żadnych dźwięków, chciałeś? jak tak to przepraszamy')" title="włącz dźwięk">🔊</button>
       <button onclick="showQRModal()" title="Pokaż QR Code">⛶</button>
       <button title="Pokaż reklamę" translate="no" onclick="alert('⚠️uBO lite nie pozwolił załadować się następującej stronie: https://a.pub.network⚠️')">AD</button>
-      <button onclick="document.body.classList.toggle('font-vt323')" style="transform: rotateY(180deg);" title="Zmień czcionkę">✎ᝰ.</button> 
+      <button onclick="document.body.classList.toggle('font-vt323')" title="Zmień czcionkę">𝓐</button> 
       <button class="theme-btn" onclick="toggleTheme()">☀︎</button>
     </div>
+    <script> 
+      document.getElementById('help-btn').addEventListener('click', function() {
+        const driver = window.driver.js.driver;
+        const driverObj = driver({
+          nextBtnText: 'Następny ›',
+          prevBtnText: '‹ Poprzedni',
+          doneBtnText: 'Zakończ',
+          progressText: '{{current}} z {{total}}',
+          showProgress: true,
+          popoverClass: 'custom-popover',
+          steps: [
+            {
+              element: '#links-other',
+              popover: {
+                title: 'Linki',
+                description: 'Tutaj znajdziesz linki do różnych stron.',
+              }
+            },
+            {
+              element: '#links-tools',
+              popover: {
+                title: 'Narzędzia',
+                description: 'Sekcja z narzędziami takimi jak notatnik czy kalkulator.',
+              }
+            },
+            {
+              element: '#links-games',
+              popover: {
+                title: 'Gry',
+                description: 'Zbiór gier do zabawy.',
+              }
+            },
+            {
+              element: '#time-counter',
+              popover: {
+                title: 'Licznik czasu',
+                description: 'Licznik pokazuje, jak długo jesteś na stronie.',
+              }
+            },
+            {
+              element: '.side-buttons',
+              popover: {
+                title: 'Boczna sekcja',
+                description: 'Przyciski ustawień i dodatkowych funkcji.',
+              }
+            },
+            {
+              element: '.link.important',
+              popover: {
+                title: 'Ważna informacja',
+                description: 'Kliknij tutaj, aby przeczytać ważną informację.',
+              }
+            },
+            {
+              element: '.footer',
+              popover: {
+                title: 'Stopka',
+                description: 'Informacje o autorze strony.',
+              }
+            }
+          ]
+        });
+        driverObj.drive();
+      });
+    </script>
+    <style>
+      .custom-popover.driver-popover {
+        background: #b3edc5;
+        color: black;
+      }
+      .custom-popover.driver-popover .driver-popover-title {
+        display: flex !important;
+        align-items: center;
+      }
+      .custom-popover.driver-popover .driver-popover-title::before {
+        content: '';
+        background: url('resources/avatar.png') no-repeat center center;
+        background-size: cover;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        margin-right: 10px;
+      }
+    </style>
   </body>
 </html>
