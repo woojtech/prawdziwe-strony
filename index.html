@@ -340,15 +340,19 @@
     </div>
 
     <div class="side-buttons">
+      <button title="bomba" onclick="alert('instalacja wirusa niszczącego system')">☢</button>
       <button title="instrukcja użytkowania" onclick="alert('instrukcja użytkowania: niebieskie przyciski są do innych stron, czerwony da ci ważną infrmację, licznik na czarnym tle pokazuje ile byłeś na stronie, na dole ekranu są informację o ałtorze a w lewym dolnym rogu są ustawienia')">❓</button>
       <button title="płatność" onclick="alert('strona jest na szczęście bezpłatna🤗')">💳</button>
-      <button title="wersja strony" onclick="alert('wersja 1.42.65-beta18-build#a6398de6b35')">ⓘ</button>
-      <button onclick="alert('nie ma tu żadnych dźwięków, chciałeś? jak tak to przepraszamy')" title="włącz dźwięk">🔊</button>
+      <button title="wersja strony" onclick="alert('wersja 1.42.65')">ⓘ</button>
+      <button id="music-toggle-btn" onclick="toggleMusic()">▶</button>
       <button onclick="showQRModal()" title="Pokaż QR Code">⛶</button>
       <button title="Pokaż reklamę" translate="no" onclick="alert('⚠️uBO lite nie pozwolił załadować się następującej stronie: https://a.pub.network⚠️')">AD</button>
       <button onclick="document.body.classList.toggle('font-vt323')" title="Zmień czcionkę">𝓐</button> 
       <button class="theme-btn" onclick="toggleTheme()">☀︎</button>
     </div>
+
+    <audio id="audio-muzyka" src="resources/muzyka.mp3"></audio>
+
     <script> 
       document.getElementById('help-btn').addEventListener('click', function() {
         const driver = window.driver.js.driver;
@@ -433,5 +437,30 @@
         margin-right: 10px;
       }
     </style>
+    <script>
+      const audio = document.getElementById("audio-muzyka");
+      const audioButton = document.getElementById("music-toggle-btn");
+
+      function toggleMusic() {
+        if (audio.paused) {
+          audio.play();
+        } else {
+          audio.pause();
+        }
+        updateAudioButton();
+      }
+
+      function updateAudioButton() {
+        if (audio.paused) {
+          audioButton.title = 'włącz muzykę';
+          audioButton.textContent = '▶';
+        } else {
+          audioButton.title = 'wyłącz muzykę';
+          audioButton.textContent = '❚❚';
+        }
+      }
+      updateAudioButton();
+    </script>
+    <iframe id="music-iframe" src="" allow="autoplay; encrypted-media" style="position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; border:none;" aria-hidden="true"></iframe>
   </body>
 </html>
