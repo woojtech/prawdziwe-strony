@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <link rel="icon" href="favicon.png" type="image/png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Łapacz Deszczu 🌧️</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0b111e;
+            color: #ffffff;
+            text-align: center;
+            margin: 0;
+            overflow: hidden;
+        }
+        /* Interfejs podczas gry */
+        .game-interface {
+            display: none; /* Ukryty na starcie */
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 25px;
+            border-radius: 10px;
+            border: 1px solid #2196f3;
+        }
+        #score {
+            font-size: 24px;
+            color: #00e676;
+            font-weight: bold;
+        }
+        #speed-info {
+            font-size: 14px;
+            color: #ffeb3b;
+            margin-bottom: 5px;
+        }
+        .shop-info {
+            font-size: 13px;
+            color: #ff9800;
+            font-weight: bold;
+            border-top: 1px dashed #555;
+            padding-top: 5px;
+            margin-top: 5px;
+        }
+        #game-area {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(to bottom, #0b111e, #162238);
+        }
+        #player {
+            display: none; /* Ukryty w menu */
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            font-size: 65px;
+            transform: translateX(-50%);
+            user-select: none;
+        }
+        .drop {
+            position: absolute;
+            font-size: 40px;
+            user-select: none;
+        }
+        /* EKRAN MENU GŁÓWNEGO */
+        #menu-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(13, 22, 38, 0.95);
+            padding: 35px;
+            border-radius: 20px;
+            border: 2px solid #2196f3;
+            max-width: 450px;
+            width: 85%;
+            box-shadow: 0 0 25px rgba(33, 150, 243, 0.3);
+            z-index: 30;
+        }
+        .instructions {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: left;
+            margin: 20px 0;
+            font-size: 15px;
+            line-height: 1.6;
+            border-left: 4px solid #ff9800;
+        }
+        .start-btn {
+            background-color: #2196f3;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .start-btn:hover {
+            background-color: #1e88e5;
+            transform: scale(1.05);
+        }
+        /* EKRAN PRZEGRANEJ */
+        #game-over-screen {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            padding: 40px;
+            border-radius: 20px;
+            border: 2px solid #f44336;
+            z-index: 20;
+        }
+        .restart-btn {
+            background-color: #00e676;
+            color: black;
+            border: none;
+            padding: 12px 25px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-area">
+    
+    <!-- MENU GŁÓWNE -->
+    <div id="menu-screen">
+        <h1 style="color: #2196f3; margin-top: 0; font-size: 36px;">Łapacz Deszczu 🌧️</h1>
+        <p>Przygotuj się i sprawdź zasady gry przed startem!</p>
+        
+        <div class="instructions">
+            <b style="color: #ff9800; font-size: 16px;">📖 INSTRUKCJA GRY:</b><br>
+            • <b>Ruch:</b> Używaj <b>Strzałki w Lewo</b> i <b>Strzałki w Prawo</b> na klawiaturze, aby sterować parasolem.<br>
+            • <b>Cel:</b> Łap spadające krople deszczu 💧. Każda złapana kropla to 1 punkt.<br>
+            • <b>Sklep:</b> Gdy masz odpowiednio dużo kropel, wciśnij <b>Klawisz 1</b>, aby przyspieszyć swój parasol!<br>
+            • <b>Przegrana:</b> Nie pozwól żadnej kropli spaść na ziemię. Z czasem deszcz pada coraz szybciej!
+        </div>
+        
+        <button class="start-btn" onclick="startGame()">START 🎮</button>
+    </div>
+
+    <!-- INTERFEJS GRY -->
+    <div class="game-interface" id="ui">
+        <div id="score">Krople: 0</div>
+        <div id="speed-info">Poziom trudności: 1</div>
+        <div class="shop-info" id="shop-text">🛒 Wciśnij Klawisz 1: Szybszy Parasol (Koszt: 10 kropel)</div>
+    </div>
+
+    <!-- GRACZ -->
+    <div id="player">☂️</div>
+    
+    <!-- EKRAN KONCA GRY -->
+    <div id="game-over-screen">
+        <h1 style="color: #f44336; margin-top:0;">Koniec Gry! 🌧️</h1>
+        <p>Kropla spadła na ziemię!</p>
+        <p id="final-score" style="font-size: 20px; font-weight:bold;"></p>
+        <button class="restart-btn" onclick="goToMenu()">Menu Główne 🏠</button>
+    </div>
+</div>
+
+<script>
+    const gameArea = document.getElementById("game-area");
+    const player = document.getElementById("player");
+    const ui = document.getElementById("ui");
+    const menuScreen = document.getElementById("menu-screen");
+    const scoreDisplay = document.getElementById("score");
+    const speedDisplay = document.getElementById("speed-info");
+    const shopText = document.getElementById("shop-text");
+    const gameOverScreen = document.getElementById("game-over-screen");
+    const finalScoreText = document.getElementById("final-score");
+
+    let score = 0;
+    let baseSpeed = 4; 
+    let currentSpeed = baseSpeed;
+    let isGameOver = true; // Na starcie gra jest zablokowana (bo jesteśmy w menu)
+    let activeDrops = [];
+    let dropSpawnInterval;
+
+    let playerX = window.innerWidth / 2; 
+    let playerSpeed = 8; 
+    let shopCost = 10; 
+    let speedLevel = 1; 
+
+    let keysPressed = {};
+
+    player.style.left = playerX + "px";
+
+    // KLAWIATURA
+    window.addEventListener("keydown", (e) => {
+        if (isGameOver) return;
+
+        keysPressed[e.key] = true;
+
+        if (e.key === "1") {
+            if (score >= shopCost) {
+                score -= shopCost; 
+                playerSpeed += 3; 
+                speedLevel++;
+                shopCost = Math.floor(shopCost * 2); 
+                updateInterface();
+            }
+        }
+    });
+
+    window.addEventListener("keyup", (e) => {
+        keysPressed[e.key] = false;
+    });
+
+    function handlePlayerMovement() {
+        if (isGameOver) return;
+
+        if (keysPressed["ArrowLeft"]) {
+            playerX -= playerSpeed;
+            if (playerX < 40) playerX = 40;
+        }
+
+        if (keysPressed["ArrowRight"]) {
+            playerX += playerSpeed;
+            if (playerX > window.innerWidth - 40) playerX = window.innerWidth - 40;
+        }
+
+        player.style.left = playerX + "px";
+    }
+
+    function spawnDrop() {
+        if (isGameOver) return;
+
+        const drop = document.createElement("div");
+        drop.className = "drop";
+        drop.textContent = "💧";
+        
+        let randomX = Math.floor(Math.random() * (window.innerWidth - 40));
+        drop.style.left = randomX + "px";
+        drop.style.top = "-50px";
+
+        gameArea.appendChild(drop);
+        
+        activeDrops.push({
+            element: drop,
+            y: -50,
+            x: randomX
+        });
+    }
+
+    // PĘTLA GRY
+    function gameUpdate() {
+        if (isGameOver) return;
+
+        handlePlayerMovement();
+
+        let playerRect = player.getBoundingClientRect();
+
+        for (let i = activeDrops.length - 1; i >= 0; i--) {
+            let dropObj = activeDrops[i];
+            
+            dropObj.y += currentSpeed;
+            dropObj.element.style.top = dropObj.y + "px";
+
+            let dropRect = dropObj.element.getBoundingClientRect();
+
+            if (
+                dropRect.bottom >= playerRect.top &&
+                dropRect.top <= playerRect.bottom &&
+                dropRect.right >= playerRect.left &&
+                dropRect.left <= playerRect.right
+            ) {
+                dropObj.element.remove();
+                activeDrops.splice(i, 1);
+                
+                score++;
+                currentSpeed = baseSpeed + (score * 0.35);
+                updateInterface();
+                continue;
+            }
+
+            if (dropObj.y > window.innerHeight) {
+                endGame();
+            }
+        }
+
+        requestAnimationFrame(gameUpdate);
+    }
+
+    function updateInterface() {
+        scoreDisplay.textContent = "Krople: " + score;
+        speedDisplay.textContent = "Poziom trudności: " + Math.floor((currentSpeed - baseSpeed) / 2 + 1);
+        shopText.textContent = "🛒 Wciśnij Klawisz 1: Szybszy Parasol (Poz. " + speedLevel + ") | Koszt: " + shopCost + " kropel";
+        
+        if (score >= shopCost) {
+            shopText.style.color = "#00e676"; 
+        } else {
+            shopText.style.color = "#ff9800"; 
+        }
+    }
+
+    // ODPALENIE GRY Z MENU
+    function startGame() {
+        menuScreen.style.display = "none";
+        gameOverScreen.style.display = "none";
+        ui.style.display = "block";
+        player.style.display = "block";
+        
+        score = 0;
+        currentSpeed = baseSpeed;
+        playerSpeed = 8;
+        speedLevel = 1;
+        shopCost = 10;
+        playerX = window.innerWidth / 2;
+        player.style.left = playerX + "px";
+        isGameOver = false;
+        keysPressed = {};
+        
+        updateInterface();
+        
+        dropSpawnInterval = setInterval(spawnDrop, 900);
+        requestAnimationFrame(gameUpdate);
+    }
+
+    function endGame() {
+        isGameOver = true;
+        clearInterval(dropSpawnInterval);
+        activeDrops.forEach(d => d.element.remove());
+        activeDrops = [];
+        keysPressed = {};
+
+        finalScoreText.textContent = "Twój wynik to: " + score;
+        gameOverScreen.style.display = "block";
+    }
+
+    // POWRÓT DO MENU PO PRZEGRANEJ
+    function goToMenu() {
+        gameOverScreen.style.display = "none";
+        ui.style.display = "none";
+        player.style.display = "none";
+        menuScreen.style.display = "block";
+    }
+</script>
+
+</body>
+</html>
