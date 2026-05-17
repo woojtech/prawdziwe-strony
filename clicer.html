@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gąbka Clicker 🧽</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121214;
+            color: #ffffff;
+            text-align: center;
+            padding: 40px 20px;
+            margin: 0;
+        }
+        .game-card {
+            background-color: #1f1f23;
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            border: 2px solid #3a3a42;
+        }
+        h1 {
+            color: #ffeb3b;
+            margin-top: 0;
+        }
+        .score-box {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #00e676;
+        }
+        .sponge-btn {
+            font-size: 100px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.05s ease;
+            outline: none;
+            display: inline-block;
+            margin: 20px 0;
+        }
+        .sponge-btn:active {
+            transform: scale(0.85);
+        }
+        .shop-box {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px dashed #3a3a42;
+        }
+        .upgrade-btn {
+            background-color: #ffeb3b;
+            color: #000000;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        .upgrade-btn:hover {
+            background-color: #fdd835;
+        }
+        /* Styl dla drugiego przycisku (niebieski) */
+        #speedBtn {
+            background-color: #2196f3;
+            color: white;
+        }
+        #speedBtn:hover {
+            background-color: #1e88e5;
+        }
+        .upgrade-btn:disabled {
+            background-color: #555555;
+            color: #888888;
+            cursor: not-allowed;
+        }
+        .stats {
+            font-size: 14px;
+            color: #aaaaaa;
+            margin-top: -5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-card">
+    <h1>Gąbka Clicker 🧽</h1>
+    <p>Klikaj w gąbkę, aby zbierać punkty!</p>
+    
+    <div class="score-box">Punkty: <span id="score">0</span></div>
+    
+    <button class="sponge-btn" id="sponge" onclick="clickSponge()">🧽</button>
+    
+    <div class="shop-box">
+        <!-- Przedmiot 1: Kupowanie Autoclickera -->
+        <button class="upgrade-btn" id="autoclickerBtn" onclick="buyAutoclicker()">
+            Kup Autoclicker (Koszt: 50 pkt)
+        </button>
+        <div class="stats" id="autoclickerStats">Posiadasz: 0</div>
+
+        <!-- Przedmiot 2: Szybsze zbieranie (Ulepszenie prędkości) -->
+        <button class="upgrade-btn" id="speedBtn" onclick="buySpeed()">
+            Szybszy Autoclicker (Koszt: 150 pkt)
+        </button>
+        <div class="stats" id="speedStats">Prędkość: Normalna (1 sek)</div>
+    </div>
+</div>
+
+<script>
+    let score = 0;
+    
+    // Zmienne dla Autoclickera
+    let autoclickers = 0;
+    let autoclickerCost = 50;
+
+    // Zmienne dla Ulepszenia Prędkości
+    let gameSpeed = 1000; // 1000 milisekund = 1 sekunda
+    let speedCost = 150;
+    let isSpeedUpgraded = false;
+    let gameInterval; // Tu przechowujemy nasz zegar, żeby móc go zresetować
+
+    const scoreDisplay = document.getElementById("score");
+    const autoclickerBtn = document.getElementById("autoclickerBtn");
+    const autoclickerStats = document.getElementById("autoclickerStats");
+    const speedBtn = document.getElementById("speedBtn");
+    const speedStats = document.getElementById("speedStats");
+
+    function clickSponge() {
+        score++;
+        updateDisplay();
+    }
+
+    function buyAutoclicker() {
+        if (score >= autoclickerCost) {
+            score -= autoclickerCost;
+            autoclickers++;
+            autoclickerCost = Math.floor(autoclickerCost * 1.5);
+            updateDisplay();
+        }
+    }
+
+    // Nowa funkcja kupowania szybszego zbierania
+    function buySpeed() {
+        if (score >= speedCost && !isSpeedUpgraded) {
+            score -= speedCost;
+            isSpeedUpgraded = true;
+            gameSpeed = 500; // Przyspieszamy do pół sekundy!
+            
+            // Musimy wyłączyć stary wolny zegar i włączyć nowy szybki
+            clearInterval(gameInterval);
+            startGameClock(); 
+            
+            updateDisplay();
+        }
+    }
+
+    function updateDisplay() {
+        scoreDisplay.textContent = score;
+        
+        // Aktualizacja przycisku Autoclickera
+        autoclickerBtn.textContent = "Kup Autoclicker (Koszt: " + autoclickerCost + " pkt)";
+        autoclickerStats.textContent = "Posiadasz: " + autoclickers;
+        
+        if (score >= autoclickerCost) {
+            autoclickerBtn.disabled = false;
+        } else {
+            autoclickerBtn.disabled = true;
+        }
+
+        // Aktualizacja przycisku Szybkości
+        if (isSpeedUpgraded) {
+            speedBtn.textContent = "KUPIONE ✅";
+            speedBtn.disabled = true;
+            speedStats.textContent = "Prędkość: Szybka (0.5 sek!)";
+        } else {
+            speedBtn.textContent = "Szybszy Autoclicker (Koszt: " + speedCost + " pkt)";
+            speedStats.textContent = "Prędkość: Normalna (1 sek)";
+            
+            if (score >= speedCost) {
+                speedBtn.disabled = false;
+            } else {
+                speedBtn.disabled = true;
+            }
+        }
+    }
+
+    // Funkcja uruchamiająca zegar gry
+    function startGameClock() {
+        gameInterval = setInterval(function() {
+            if (autoclickers > 0) {
+                score += autoclickers;
+                updateDisplay();
+            }
+        }, gameSpeed);
+    }
+
+    // Odpalamy zegar po raz pierwszy na starcie gry
+    startGameClock();
+    updateDisplay();
+</script>
+
+</body>
+</html>
