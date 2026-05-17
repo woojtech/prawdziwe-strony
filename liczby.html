@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zgadywanka Liczb</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            text-align: center;
+            padding: 50px;
+        }
+        .game-container {
+            background-color: #2d2d2d;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.5);
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #4caf50;
+        }
+        input {
+            padding: 10px;
+            font-size: 18px;
+            width: 80px;
+            text-align: center;
+            border-radius: 5px;
+            border: 2px solid #4caf50;
+            background-color: #1a1a1a;
+            color: white;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #feedback {
+            font-size: 20px;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        #attempts {
+            color: #aaa;
+            margin-top: 10px;
+        }
+        .reset-btn {
+            background-color: #008cba;
+            margin-top: 15px;
+            display: none;
+        }
+        .reset-btn:hover {
+            background-color: #007ba7;
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <h1>Zgadywanka Liczb 🎯</h1>
+    <p>Wylosowałem liczbę od 1 do 100. Spróbuj ją odgadnąć!</p>
+    
+    <input type="number" id="userGuess" min="1" max="100" placeholder="0">
+    <button onclick="checkGuess()">Sprawdź</button>
+
+    <div id="feedback"></div>
+    <div id="attempts">Liczba prób: 0</div>
+    
+    <button id="resetButton" class="reset-btn" onclick="resetGame()">Zagraj jeszcze raz 🔄</button>
+</div>
+
+<script>
+    // 1. Komputer losuje sekretną liczbę na start
+    let secretNumber = Math.floor(Math.random() * 100) + 1;
+    let attemptsCount = 0;
+
+    function checkGuess() {
+        // Pobieramy wpisaną liczbę z okienka
+        const inputField = document.getElementById("userGuess");
+        const userGuess = parseInt(inputField.value);
+        const feedback = document.getElementById("feedback");
+        const attemptsElement = document.getElementById("attempts");
+        const resetButton = document.getElementById("resetButton");
+
+        // Sprawdzamy, czy gracz na pewno wpisał poprawną liczbę
+        if (isNaN(userGuess) || userGuess < 1 || userGuess > 100) {
+            feedback.textContent = "❌ Wpisz liczbę od 1 do 100!";
+            feedback.style.color = "#ff9800";
+            return;
+        }
+
+        // Dodajemy 1 do licznika prób
+        attemptsCount++;
+        attemptsElement.textContent = "Liczba prób: " + attemptsCount;
+
+        // Główna logika gry - sprawdzanie za dużo / za mało / wygrana
+        if (userGuess === secretNumber) {
+            feedback.textContent = "🎉 Brawo! Odgadłeś liczbę! Wspaniała robota!";
+            feedback.style.color = "#4caf50";
+            resetButton.style.display = "inline-block"; // Pokazuje przycisk restartu
+        } else if (userGuess > secretNumber) {
+            feedback.textContent = "📈 Za DUŻO! Spróbuj mniejszej liczby.";
+            feedback.style.color = "#f44336";
+        } else {
+            feedback.textContent = "📉 Za MAŁO! Spróbuj większej liczby.";
+            feedback.style.color = "#2196f3";
+        }
+
+        // Czyszczenie okienka po kliknięciu sprawdzania
+        inputField.value = "";
+        inputField.focus();
+    }
+
+    // Funkcja do resetowania gry i losowania nowej liczby
+    function resetGame() {
+        secretNumber = Math.floor(Math.random() * 100) + 1;
+        attemptsCount = 0;
+        document.getElementById("attempts").textContent = "Liczba prób: 0";
+        document.getElementById("feedback").textContent = "";
+        document.getElementById("resetButton").style.display = "none";
+        document.getElementById("userGuess").value = "";
+    }
+</script>
+
+</body>
+</html>
