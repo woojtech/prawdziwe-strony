@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <link rel="icon" type="image/png" href="./favicon.png"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Szalony Kucharz 🍕</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a0f00;
+            color: #ffffff;
+            text-align: center;
+            margin: 0;
+            overflow: hidden;
+        }
+        .game-interface {
+            display: none; 
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(40, 25, 0, 0.85);
+            padding: 15px 25px;
+            border-radius: 10px;
+            border: 2px solid #ff9800;
+        }
+        #score {
+            font-size: 24px;
+            color: #4caf50;
+            font-weight: bold;
+        }
+        #lives {
+            font-size: 20px;
+            color: #e91e63;
+            margin: 3px 0;
+            font-weight: bold;
+        }
+        #magnet-status {
+            font-size: 14px;
+            color: #ffeb3b;
+            font-weight: bold;
+        }
+        .shop-info {
+            font-size: 13px;
+            color: #ff9800;
+            font-weight: bold;
+            border-top: 1px dashed #555;
+            padding-top: 5px;
+            margin-top: 5px;
+        }
+        #game-area {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(to bottom, #2c1a04, #120b02);
+        }
+        #player {
+            display: none; 
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            font-size: 60px;
+            transform: translateX(-50%);
+            user-select: none;
+        }
+        .falling-item {
+            position: absolute;
+            font-size: 45px;
+            user-select: none;
+        }
+        /* EKRAN MENU GŁÓWNEGO */
+        #menu-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(30, 20, 5, 0.95);
+            padding: 35px;
+            border-radius: 20px;
+            border: 2px solid #ff9800;
+            max-width: 450px;
+            width: 85%;
+            box-shadow: 0 0 25px rgba(255, 152, 0, 0.3);
+            z-index: 30;
+        }
+        .instructions {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: left;
+            margin: 20px 0;
+            font-size: 15px;
+            line-height: 1.6;
+            border-left: 4px solid #4caf50;
+        }
+        .start-btn {
+            background-color: #ff9800;
+            color: black;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .start-btn:hover {
+            background-color: #e65100;
+            transform: scale(1.05);
+            color: white;
+        }
+        /* EKRAN PRZEGRANEJ */
+        #game-over-screen {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            padding: 40px;
+            border-radius: 20px;
+            border: 2px solid #f44336;
+            z-index: 20;
+        }
+        .restart-btn {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-area">
+    
+    <!-- MENU GŁÓWNE -->
+    <div id="menu-screen">
+        <h1 style="color: #ff9800; margin-top: 0; font-size: 34px;">Szalony Kucharz 🍕</h1>
+        <p>Zbuduj najlepszą pizzę w mieście!</p>
+        
+        <div class="instructions">
+            <b style="color: #4caf50; font-size: 16px;">📖 INSTRUKCJA KUCHENNA:</b><br>
+            • <b>Ruch:</b> Steruj podkładem do pizzy za pomocą <b>Strzałek</b> (Lewo / Prawo).<br>
+            • <b>Dobre jedzenie:</b> Łap pyszne składniki: 🍄, 🍅, 🧀, aby zdobywać punkty!<br>
+            • <b>Zgniłe rzeczy:</b> UNIKAJ much 🪰 i starych gąbek 🧽! Złapanie ich niszczy pizzę.<br>
+            • <b>Życia:</b> Masz <b>3 serduszka ❤️</b>. Tracisz je za złapanie muchy lub upuszczenie jedzenia.<br>
+            • <b>Sklep:</b> Za 15 pkt wciśnij <b>Klawisz 1</b> – aktywujesz Magnes na Składniki na 5 sekund!<br>
+            • <b>Trudność:</b> Składniki i muchy spadają coraz szybciej!
+        </div>
+        
+        <button class="start-btn" onclick="startGame()">OTWÓRZ PIZZERIĘ 👨‍Chef</button>
+    </div>
+
+    <!-- INTERFEJS GRY -->
+    <div class="game-interface" id="ui">
+        <div id="score">Składniki: 0</div>
+        <div id="lives">Życia: ❤️❤️❤️</div>
+        <div id="magnet-status">Magnes: Wyłączony ⚪</div>
+        <div class="shop-info" id="shop-text">🛒 Wciśnij 1: Złoty Ser - Magnes (Koszt: 15 składników)</div>
+    </div>
+
+    <!-- GRACZ (PODKŁAD NA PIZZĘ) -->
+    <div id="player">🍽️</div>
+    
+    <!-- EKRAN KONCA GRY -->
+    <div id="game-over-screen">
+        <h1 style="color: #f44336; margin-top:0;">Pizzeria Zamknięta! 💥</h1>
+        <p>Zepsułeś za dużo składników.</p>
+        <p id="final-score" style="font-size: 20px; font-weight:bold;"></p>
+        <button class="restart-btn" onclick="goToMenu()">Menu Główne 🏠</button>
+    </div>
+</div>
+
+<script>
+    const gameArea = document.getElementById("game-area");
+    const player = document.getElementById("player");
+    const ui = document.getElementById("ui");
+    const menuScreen = document.getElementById("menu-screen");
+    const scoreDisplay = document.getElementById("score");
+    const livesDisplay = document.getElementById("lives"); 
+    const magnetDisplay = document.getElementById("magnet-status");
+    const shopText = document.getElementById("shop-text");
+    const gameOverScreen = document.getElementById("game-over-screen");
+    const finalScoreText = document.getElementById("final-score");
+
+    let score = 0;
+    let maxLives = 3; 
+    let lives = maxLives; 
+    let itemSpeed = 4; 
+    let isGameOver = true; 
+    let activeItems = [];
+    let itemSpawnInterval;
+
+    let playerX = window.innerWidth / 2; 
+    let playerSpeed = 12; 
+    let shopCost = 15;
+    let hasMagnet = false;
+
+    // Baza dobrych i złych rzeczy
+    const goodItems = ["🍄", "🍅", "🧀"];
+    const badItems = ["🪰", "🧽"];
+
+    let keysPressed = {};
+
+    player.style.left = playerX + "px";
+
+    // KLAWIATURA
+    window.addEventListener("keydown", (e) => {
+        if (isGameOver) return;
+        keysPressed[e.key] = true;
+
+        // Kupowanie Magnesu (Klawisz 1)
+        if (e.key === "1" && score >= shopCost && !hasMagnet) {
+            score -= shopCost;
+            hasMagnet = true;
+            player.textContent = "🧲🍽️"; 
+            updateInterface();
+
+            // Magnes działa przez 5 sekund
+            setTimeout(() => {
+                hasMagnet = false;
+                player.textContent = "🍽️"; 
+                updateInterface();
+            }, 5000);
+        }
+    });
+
+    window.addEventListener("keyup", (e) => {
+        keysPressed[e.key] = false;
+    });
+
+    function handlePlayerMovement() {
+        if (isGameOver) return;
+
+        if (keysPressed["ArrowLeft"]) {
+            playerX -= playerSpeed;
+            if (playerX < 40) playerX = 40;
+        }
+        if (keysPressed["ArrowRight"]) {
+            playerX += playerSpeed;
+            if (playerX > window.innerWidth - 40) playerX = window.innerWidth - 40;
+        }
+        player.style.left = playerX + "px";
+    }
+
+    function spawnItem() {
+        if (isGameOver) return;
+
+        const item = document.createElement("div");
+        item.className = "falling-item";
+        
+        // Losujemy, czy spadnie coś dobrego (70% szans), czy coś złego (30% szans)
+        let isGood = Math.random() > 0.3;
+        if (isGood) {
+            item.textContent = goodItems[Math.floor(Math.random() * goodItems.length)];
+            item.dataset.type = "good";
+        } else {
+            item.textContent = badItems[Math.floor(Math.random() * badItems.length)];
+            item.dataset.type = "bad";
+        }
+        
+        let randomX = Math.floor(Math.random() * (window.innerWidth - 50));
+        item.style.left = randomX + "px";
+        item.style.top = "-60px";
+
+        gameArea.appendChild(item);
+        
+        activeItems.push({
+            element: item,
+            y: -60,
+            x: randomX,
+            type: item.dataset.type
+        });
+    }
+
+    // PĘTLA GRY
+    function gameUpdate() {
+        if (isGameOver) return;
+
+        handlePlayerMovement();
+        let playerRect = player.getBoundingClientRect();
+
+        for (let i = activeItems.length - 1; i >= 0; i--) {
+            let itemObj = activeItems[i];
+            
+            // SKLEP: Funkcja magnesu – jeśli włączony, dobre składniki powoli lecą w stronę kucharza!
+            if (hasMagnet && itemObj.type === "good") {
+                let diffX = playerX - itemObj.x;
+                itemObj.x += diffX * 0.05; // Przyciąganie w poziomie
+                itemObj.element.style.left = itemObj.x + "px";
+            }
+
+            itemObj.y += itemSpeed;
+            itemObj.element.style.top = itemObj.y + "px";
+
+            let itemRect = itemObj.element.getBoundingClientRect();
+
+            // KOLIZJA Z GRACZEM (ZŁAPANIE)
+            if (
+                itemRect.bottom >= playerRect.top &&
+                itemRect.top <= playerRect.bottom &&
+                itemRect.right >= playerRect.left &&
+                itemRect.left <= playerRect.right
+            ) {
+                itemObj.element.remove();
+                activeItems.splice(i, 1);
+                
+                if (itemObj.type === "good") {
+                    score++;
+                    itemSpeed += 0.15; // Gra delikatnie przyspiesza
+                } else {
+                    lives--; // Złapanie muchy lub gąbki zabiera życie!
+                }
+                
+                updateInterface();
+
+                if (lives <= 0) {
+                    endGame();
+                    return;
+                }
+                continue;
+            }
+
+            // ELEMENT SPADŁ NA ZIEMIĘ
+            if (itemObj.y > window.innerHeight) {
+                itemObj.element.remove();
+                activeItems.splice(i, 1);
+
+                // Upuszczenie DOBREGO składnika zabiera życie
+                if (itemObj.type === "good") {
+                    lives--;
+                    updateInterface();
+                    if (lives <= 0) {
+                        endGame();
+                        return;
+                    }
+                }
+                // Upuszczenie złej rzeczy (muchy) jest bezpieczne!
+            }
+        }
+
+        requestAnimationFrame(gameUpdate);
+    }
+
+    function updateInterface() {
+        scoreDisplay.textContent = "Składniki: " + score;
+        
+        let hearts = "";
+        for (let i = 0; i < lives; i++) {
+            hearts += "❤️";
+        }
+        livesDisplay.textContent = "Życia: " + hearts;
+
+        if (hasMagnet) {
+            magnetDisplay.textContent = "Magnes: AKTYWNY 🧲";
+            magnetDisplay.style.color = "#ffeb3b";
+        } else {
+            magnetDisplay.textContent = "Magnes: Wyłączony ⚪";
+            magnetDisplay.style.color = "#ffffff";
+        }
+
+        if (score >= shopCost && !hasMagnet) {
+            shopText.style.color = "#00e676"; 
+        } else {
+            shopText.style.color = "#ff9800"; 
+        }
+    }
+
+    function startGame() {
+        menuScreen.style.display = "none";
+        gameOverScreen.style.display = "none";
+        ui.style.display = "block";
+        player.style.display = "block";
+        player.textContent = "🍽️";
+        
+        score = 0;
+        lives = maxLives;
+        itemSpeed = 4;
+        playerX = window.innerWidth / 2;
+        player.style.left = playerX + "px";
+        isGameOver = false;
+        hasMagnet = false;
+        keysPressed = {};
+        
+        updateInterface();
+        
+        // Nowy składnik co 800ms
+        itemSpawnInterval = setInterval(spawnItem, 800);
+
+        requestAnimationFrame(gameUpdate);
+    }
+
+    function endGame() {
+        isGameOver = true;
+        clearInterval(itemSpawnInterval);
+        activeItems.forEach(i => i.element.remove());
+        activeItems = [];
+        keysPressed = {};
+
+        finalScoreText.textContent = "Zebrałeś składników: " + score;
+        gameOverScreen.style.display = "block";
+    }
+
+    function goToMenu() {
+        gameOverScreen.style.display = "none";
+        ui.style.display = "none";
+        player.style.display = "none";
+        menuScreen.style.display = "block";
+    }
+</script>
+
+</body>
+</html>
