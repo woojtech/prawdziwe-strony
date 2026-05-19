@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <link rel="icon" type="image/png" href="./favicon.png"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stickman Hook - Moja Wersja 🪢</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #111116;
+            color: #ffffff;
+            text-align: center;
+            margin: 0;
+            overflow: hidden;
+        }
+        .interface {
+            position: absolute;
+            top: 15px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 1px solid #00e5ff;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #score { font-size: 24px; color: #00e676; font-weight: bold; }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            background-color: #1a1a24;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            border: 2px solid #333;
+        }
+        #game-over {
+            display: none;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            padding: 35px; border-radius: 15px;
+            border: 2px solid #ff4081;
+            z-index: 20;
+        }
+        button {
+            background: #00e676; color: black; border: none;
+            padding: 12px 25px; font-size: 18px; font-weight: bold;
+            border-radius: 8px; cursor: pointer; margin-top: 15px;
+        }
+        button:hover { background: #00c862; }
+    </style>
+</head>
+<body>
+
+<div class="interface">
+    <div id="score">Dystans: 0m</div>
+    <div style="font-size: 14px; color: #ff9800; margin-top: 3px;">Trzymaj <b>SPACJĘ</b>, aby złapać się haka!</div>
+</div>
+
+<div id="canvas-container">
+    <canvas id="gameCanvas" width="800" height="500"></canvas>
+</div>
+
+<div id="game-over">
+    <h1 style="color: #ff4081; margin: 0; font-size: 32px;">Koniec Gry! 💥</h1>
+    <p id="final-score" style="font-size: 18px; margin: 15px 0;"></p>
+    <button onclick="resetGame()">Zagraj znowu 🔄</button>
+</div>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const scoreDisplay = document.getElementById("score");
+    const gameOverScreen = document.getElementById("game-over");
+    const finalScoreText = document.getElementById("final-score");
+
+    // Parametry gracza
+    let player = {
+        x: 100, y: 200,
+        vx: 5, vy: 0,
+        radius: 14,
+        gravity: 0.35
+    };
+
+    // Stan liny
+    let rope = {
+        x: 0, y: 0,
+        length: 0,
+        active: false,
+        angle: 0,
+        angularVelocity: 0
+    };
+
+    // Zagęszczona lista haków startowych
+    let hooks = [
+        {x: 150, y: 60}, {x: 270, y: 60}, {x: 390, y: 60},
+        {x: 510, y: 60}, {x: 630, y: 60}, {x: 750, y: 60}
+    ];
+
+    let score = 0;
+    let isGameOver = false;
+    let cameraX = 0;
+    let isSpacePressed = false;
+
+    // STEROWANIE SPACJĄ
+    window.addEventListener("keydown", (e) => {
+        if (e.key === " " || e.key === "Spacebar") {
+            e.preventDefault();
+            if (!isSpacePressed && !isGameOver) {
+                isSpacePressed = true;
+                attachRope();
+            }
+        }
+    });
+
+    window.addEventListener("keyup", (e) => {
+        if (e.key === " " || e.key === "Spacebar") {
+            isSpacePressed = false;
+            rope.active = false;
+        }
+    });
+
+    // POPRAWNE PRZYPINANIE LINY
+    function attachRope() {
+        let nearestHook = null;
+        let minDist = 99999;
+
+        hooks.forEach(hook => {
+            if (hook.x > player.x - 50) {
+                let dist = Math.hypot(hook.x - player.x, hook.y - player.y);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearestHook = hook;
+                }
+            }
+        });
+
+        if (nearestHook && minDist < 350) {
+            rope.x = nearestHook.x;
+            rope.y = nearestHook.y;
+            rope.length = minDist;
+            rope.active = true;
+
+            // Obliczanie prawdziwego kąta wahadła
+            rope.angle = Math.atan2(player.y - rope.y, player.x - rope.x);
+            
+            // Prawidłowe przełożenie prędkości gracza na ruch obrotowy (fizyka wektorów)
+            let tangentX = -Math.sin(rope.angle);
+            let tangentY = Math.cos(rope.angle);
+            let dotProduct = player.vx * tangentX + player.vy * tangentY;
+            
+            rope.angularVelocity = dotProduct / rope.length;
+        }
+    }
+
+    // PĘTLA LOGICZNA - W 100% NAPRAWIONA FIZYKA PĘDU
+    function update() {
+        if (isGameOver) return;
+
+        if (rope.active) {
+            // Prawdziwe przyspieszenie wahadłowe: grawitacja działa w DÓŁ (używamy SINUSA kąta od pionu)
+            // Kąt w układzie Math.atan2 ma 0 po prawej, więc pion w dół to Math.PI/2.
+            // Siła przywracająca zależy od Math.cos(rope.angle), ponieważ siła ciągnie w dół
+            let angleAcceleration = -(player.gravity / rope.length) * Math.cos(rope.angle);
+            
+            rope.angularVelocity += angleAcceleration;
+            rope.angularVelocity *= 0.998; // Bardzo delikatny opór, żeby utrzymać pęd
+            rope.angle += rope.angularVelocity;
+
+            // Obliczanie nowej pozycji gracza na napiętej linie
+            player.x = rope.x + rope.length * Math.cos(rope.angle);
+            player.y = rope.y + rope.length * Math.sin(rope.angle);
+
+            // Prawidłowe wzory na prędkość po puszczeniu liny (pochodne pozycji)
+            player.vx = -rope.length * rope.angularVelocity * Math.sin(rope.angle);
+            player.vy = rope.length * rope.angularVelocity * Math.cos(rope.angle);
+            
+            // Minimalna prędkość w prawo, żeby gracz nie wisiał bez ruchu
+            if (player.vx < 1) player.vx = 1;
+        } else {
+            // ZWYKŁY LOT (Spadanie z normalną grawitacją)
+            player.vy += player.gravity;
+            player.x += player.vx;
+            player.y += player.vy;
+            player.vx *= 0.999; // Zachowanie pędu do przodu
+        }
+
+        // Kamera płynnie goni gracza
+        if (player.x - cameraX > 250) {
+            cameraX = player.x - 250;
+        }
+
+        // Generowanie haków przed graczem
+        if (hooks[hooks.length - 1].x < player.x + 800) {
+            let lastX = hooks[hooks.length - 1].x;
+            hooks.push({
+                x: lastX + Math.floor(Math.random() * 60) + 110,
+                y: 60
+            });
+        }
+
+        score = Math.floor(player.x / 10);
+        scoreDisplay.textContent = "Dystans: " + score + "m";
+
+        if (player.y > canvas.height + 20) {
+            endGame();
+        }
+    }
+
+    // RYSOWANIE GRAFIKI
+    function draw() {
+        ctx.fillStyle = "#1a1a24";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.translate(-cameraX, 0);
+
+        // Linia sufitu
+        ctx.strokeStyle = "#2d2d3d";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(cameraX, 60);
+        ctx.lineTo(cameraX + canvas.width, 60);
+        ctx.stroke();
+
+        // Rysowanie haków
+        hooks.forEach(hook => {
+            ctx.fillStyle = "#00e5ff";
+            ctx.beginPath();
+            ctx.arc(hook.x, hook.y, 6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = "rgba(0, 229, 255, 0.2)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(hook.x, hook.y, 14, 0, Math.PI * 2);
+            ctx.stroke();
+        });
+
+        // Rysowanie białej liny
+        if (rope.active) {
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(rope.x, rope.y);
+            ctx.lineTo(player.x, player.y);
+            ctx.stroke();
+        }
+
+        // Rysowanie gracza
+        ctx.fillStyle = rope.active ? "#ff4081" : "#b388ff";
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    function gameLoop() {
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function endGame() {
+        isGameOver = true;
+        finalScoreText.textContent = "Udało Ci się dolecieć na odległość: " + score + " metrów!";
+        gameOverScreen.style.display = "block";
+    }
+
+    function resetGame() {
+        player = { x: 100, y: 200, vx: 5, vy: 0, radius: 14, gravity: 0.35 };
+        rope.active = false;
+        hooks = [
+            {x: 150, y: 60}, {x: 270, y: 60}, {x: 390, y: 60},
+            {x: 510, y: 60}, {x: 630, y: 60}, {x: 750, y: 60}
+        ];
+        cameraX = 0;
+        score = 0;
+        isGameOver = false;
+        isSpacePressed = false;
+        gameOverScreen.style.display = "none";
+    }
+
+    gameLoop();
+</script>
+
+</body>
+</html>

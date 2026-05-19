@@ -248,6 +248,29 @@
           .join(':');
       }
     </script>
+    <script>
+    // TEN KOD NAPRAWIA PRZYCISK DARK/WHITE I OBSŁUGUJE USTAWIENIA!
+    function applyGlobalSettings() {
+        // 1. Rozmiar tekstu z ustawień
+        const savedSize = localStorage.getItem("globalFontSize");
+        if (savedSize) {
+            document.body.style.setProperty("font-size", savedSize, "important");
+        }
+
+        // 2. Kolor tła z ustawień - NAPRAWIONY!
+        // Zamiast psuć tło, podmieniamy Twoją zmienną --bg-color
+        const savedBg = localStorage.getItem("mainBgColor");
+        if (savedBg) {
+            document.body.style.setProperty("--bg-color", savedBg);
+        }
+    }
+
+    // Odpala się przy ładowaniu strony index.html
+    window.addEventListener("DOMContentLoaded", applyGlobalSettings);
+    localStorage.removeItem("mainBgColor");
+
+</script>
+
   </head>
   <body onload="setTheme('auto')" theme="auto">
     <div class="marquee">
@@ -317,6 +340,7 @@
       <a href="liczby.html">zgadywanka liczb</a>
     <a href="spadający-derzcz.html">spadający derzcz</a>
     <a href="pizza.html">Pizzeria</a>
+    <a href="lina.html">Stickman Hook</a>
     </div>
 
     <div class="footer">
@@ -344,6 +368,7 @@
     </div>
 
     <div class="side-buttons">
+      <a href="ustawienia.html">⚙️</a>
       <button title="bomba" onclick="alert('instalacja wirusa niszczącego system')">☢</button>
       <button title="instrukcja użytkowania" onclick="alert('instrukcja użytkowania: niebieskie przyciski są do innych stron, czerwony da ci ważną infrmację, licznik na czarnym tle pokazuje ile byłeś na stronie, na dole ekranu są informację o ałtorze a w lewym dolnym rogu są ustawienia')">❓</button>
       <button title="płatność" onclick="alert('strona jest na szczęście bezpłatna🤗')">💳</button>
@@ -467,4 +492,7 @@
     </script>
     <iframe id="music-iframe" src="" allow="autoplay; encrypted-media" style="position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; border:none;" aria-hidden="true"></iframe>
   </body>
+
+
+
 </html>
