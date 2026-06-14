@@ -1,0 +1,121 @@
+<html>
+  <style>
+    /* Ukrycie menu domyślnie */
+    .context-menu {
+      display: none;
+      position: absolute;
+      z-index: 1000;
+      background: #ffffff;
+      border: 1px solid #cccccc;
+      box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+      border-radius: 4px;
+      padding: 5px 0;
+    }
+
+    /* Wygląd listy w menu */
+    .context-menu ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .context-menu ul li {
+      padding: 8px 15px;
+      cursor: pointer;
+    }
+
+    .context-menu ul li:hover {
+      background: #f0f0f0;
+    }
+
+    /* Wygląd obszaru kliknięcia */
+    .box {
+      width: 300px;
+      height: 150px;
+      background-color: #e3f2fd;
+      border: 2px dashed #2196f3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      user-select: none;
+      font-family: sans-serif;
+    }
+
+    .link-as-text {
+      color: inherit; /* Dziedziczy kolor tekstu z menu */
+      text-decoration: none; /* Usuwa podkreślenie */
+    }
+  </style>
+
+  <body>    
+    <div id="obszar" class="box">
+      Kliknij tutaj PRAWYM przyciskiem myszy!
+      <label>Kolor: <input type="color" id="colorPicker" onchange="changeColor(this.value)"></label>
+    </div>
+
+    <div id="mojeMenu" class="context-menu">
+      <ul>
+        <li><a href="index.html" class="link-as-text">Strona główna</a></li>
+        <li onclick="document.location.href=document.location.href">Odśwież  (Ctrl+R)</li>
+        <li><a id="a-same-site" class="link-as-text" href="#" target="_blank">Otwórz w nowej karcie  (Ctrl+T)</a></li>
+        <li onclick="history.back()">cofnij  (Alt+Stałka w lewo)</li>
+        <li onclick="history.forward()">do przodu  (Alt+Stałka w prawo)</li>
+        <li onclick="window.print()">drukuj  (Ctrl+P)</li>
+      </ul>
+    </div>
+
+    <script>
+      function getContrastTextHex(hex) {
+        let cleanHex = hex.replace("#", "");
+        if (cleanHex.length === 3) {
+          cleanHex = cleanHex.split("").map(char => char + char).join("");
+        }
+        
+        const r = parseInt(cleanHex.substring(0, 2), 16);
+        const g = parseInt(cleanHex.substring(2, 4), 16);
+        const b = parseInt(cleanHex.substring(4, 6), 16);
+        
+        // Wzór YIQ (wagowanie jasności składowych)
+        const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+        
+        // 128 to środek skali (0-255). Powyżej tło jest jasne (daj czarny tekst), poniżej ciemne (daj biały)
+        return yiq >= 128 ? "#000000" : "#ffffff";
+      }
+
+      function changeColor(color) {
+        const contrastColor = getContrastTextHex(color);
+        document.getElementById('obszar').style.backgroundColor = color;
+        document.getElementById('obszar').style.color = contrastColor;
+      }
+
+      const menu = document.getElementById('mojeMenu');
+      const obszar = document.getElementById('obszar');
+      document.getElementById('a-same-site').href = window.location.href; // Ustawienie linku na aktualną stronę
+
+      // 1. Zablokowanie domyślnego menu przeglądarki
+      obszar.addEventListener('contextmenu', (e) => {
+        e.preventDefault(); // Blokuje standardowe menu systemowe
+
+        // Pobranie pozycji kursora
+        const posX = e.clientX;
+        const posY = e.clientY;
+
+        // Ustawienie pozycji menu i wyświetlenie go
+        menu.style.top = `${posY}px`;
+        menu.style.left = `${posX}px`;
+        menu.style.display = 'block';
+      });
+
+      // 2. Ukrycie menu po kliknięciu w dowolnym miejscu
+      document.addEventListener('click', () => {
+        menu.style.display = 'none';
+      });
+
+      // 3. Przykładowa funkcja dla opcji menu
+      function akcja(opcja) {
+        alert(`Wybrano akcję: ${opcja}`);
+      }
+    </script>
+  </body>
+</html>
