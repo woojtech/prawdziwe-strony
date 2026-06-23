@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symulator Walki ludzmi</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1e2f, #11111b);
+            color: #fff;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        h1 {
+            margin-bottom: 5px;
+            text-shadow: 0 0 10px rgba(255, 75, 75, 0.5);
+        }
+        .stats {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        /* Pasek zdrowia */
+        .hp-container {
+            width: 250px;
+            height: 25px;
+            background-color: #444;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid #555;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .hp-bar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #ff4b4b, #ff8585);
+            transition: width 0.1s ease-out;
+        }
+        .hp-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            top: 50%;
+            transform: translateY(-50%);
+            font-weight: bold;
+            font-size: 0.9rem;
+            text-shadow: 1px 1px 2px #000;
+        }
+        /* Kukła treningowa */
+        .dummy-target {
+            width: 200px;
+            height: 280px;
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.05s ease-in-out;
+        }
+        .dummy-target:active {
+            transform: scale(0.92) translateY(5px);
+        }
+        /* Grafika kukły z CSS */
+        .dummy-head {
+            width: 80px;
+            height: 80px;
+            background-color: #d2b48c;
+            border-radius: 50%;
+            margin: 0 auto;
+            border: 4px solid #8b5a2b;
+            position: relative;
+        }
+        .dummy-head::before, .dummy-head::after {
+            content: 'X';
+            position: absolute;
+            top: 25px;
+            color: #8b5a2b;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .dummy-head::before { left: 20px; }
+        .dummy-head::after { right: 20px; }
+        .dummy-body {
+            width: 120px;
+            height: 160px;
+            background-color: #cd853f;
+            border-radius: 20px 20px 50px 50px;
+            margin: -5px auto 0;
+            border: 4px solid #8b5a2b;
+            position: relative;
+        }
+        .dummy-target.hit {
+            animation: wobble 0.15s ease-in-out;
+        }
+        @keyframes wobble {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(-8deg) translateX(-5px); }
+            75% { transform: rotate(8deg) translateX(5px); }
+            100% { transform: rotate(0deg); }
+        }
+        /* Tekst obrażeń (pop-up) */
+        .damage-pop {
+            position: absolute;
+            color: #ffcc00;
+            font-weight: bold;
+            font-size: 1.5rem;
+            pointer-events: none;
+            animation: floatUp 0.6s ease-out forwards;
+            text-shadow: 2px 2px 4px #000;
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-80px) scale(1.2); }
+        }
+        /* Sklep z ulepszeniami */
+        .shop {
+            margin-top: 35px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+            width: 320px;
+            text-align: center;
+        }
+        .shop h3 { margin-top: 0; color: #ffcc00; }
+        .shop-btn {
+            width: 100%;
+            background: linear-gradient(90deg, #4caf50, #45a049);
+            color: white;
+            border: none;
+            padding: 12px;
+            margin: 5px 0;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.2);
+        }
+        .shop-btn:hover { background: linear-gradient(90deg, #45a049, #388e3c); }
+        .shop-btn:disabled {
+            background: #555;
+            color: #aaa;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .shop-btn:active:not(:disabled) { transform: scale(0.98); }
+    </style>
+</head>
+<body>
+
+    <h1>🥊 Gym Clicker Simulator</h1>
+    <div class="stats">Zdobyte Punkty: <span id="score-val">0</span></div>
+
+    <div class="game-container">
+        <!-- Pasek HP przeciwnika -->
+        <div class="hp-container">
+            <div class="hp-bar" id="hp-bar"></div>
+            <div class="hp-text" id="hp-text">HP: 100 / 100</div>
+        </div>
+
+        <!-- Kukła treningowa do bicia -->
+        <div class="dummy-target" id="dummy">
+            <div class="dummy-head"></div>
+            <div class="dummy-body"></div>
+        </div>
+    </div>
+
+    <!-- Panel ulepszeń -->
+    <div class="shop">
+        <h3>🏪 Sklep Trenera</h3>
+        <button class="shop-btn" id="upgrade-punch" onclick="buyUpgrade()">
+            Kup Rękawice (+1 do ciosu)<br>Koszt: <span id="upgrade-cost">15</span> punktów
+        </button>
+        <p style="font-size: 0.85rem; color: #aaa; margin-bottom: 0;">Obecna siła ciosu: <span id="damage-val">1</span></p>
+    </div>
+
+    <script>
+        // Logika Gry
+        let score = 0;
+        let punchDamage = 1;
+        let upgradeCost = 15;
+        
+        let maxHp = 100;
+        let currentHp = 100;
+        let level = 1;
+
+        const scoreEl = document.getElementById('score-val');
+        const hpBar = document.getElementById('hp-bar');
+        const hpText = document.getElementById('hp-text');
+        const dummy = document.getElementById('dummy');
+        const upgradeBtn = document.getElementById('upgrade-punch');
+        const upgradeCostEl = document.getElementById('upgrade-cost');
+        const damageValEl = document.getElementById('damage-val');
+
+        // Obsługa kliknięcia (uderzenia)
+        dummy.addEventListener('mousedown', (e) => {
+            // Dodanie punktów i zabranie HP
+            score += punchDamage;
+            currentHp -= punchDamage;
+            
+            scoreEl.textContent = score;
+
+            // Animacja uderzenia kukły
+            dummy.classList.remove('hit');
+            void dummy.offsetWidth; // Reset animacji CSS
+            dummy.classList.add('hit');
+
+            // Wywołanie tekstu obrażeń w miejscu kliknięcia
+            createDamagePop(e.clientX, e.clientY, punchDamage);
+
+            // Sprawdzenie "pokonania" kukły i awansu na wyższy poziom
+            if (currentHp <= 0) {
+                level++;
+                maxHp = Math.floor(100 * Math.pow(1.3, level - 1)); // HP rośnie z każdym poziomem
+                currentHp = maxHp;
+                score += level * 5; // Bonusowe punkty za pokonanie poziomu
+                scoreEl.textContent = score;
+            }
+
+            updateUI();
+        });
+
+        // Tworzenie wyskakującej cyfry obrażeń
+        function createDamagePop(x, y, damage) {
+            const pop = document.createElement('div');
+            pop.classList.add('damage-pop');
+            pop.textContent = `-${damage}`;
+            
+            // Pozycjonowanie w miejscu kursora
+            pop.style.left = `${x - 20}px`;
+            pop.style.top = `${y - 30}px`;
+            
+            document.body.appendChild(pop);
+            
+            // Usunięcie elementu po zakończeniu animacji
+            setTimeout(() => {
+                pop.remove();
+            }, 600);
+        }
+
+        // Zakup ulepszenia
+        function buyUpgrade() {
+            if (score >= upgradeCost) {
+                score -= upgradeCost;
+                punchDamage += 1;
+                upgradeCost = Math.floor(upgradeCost * 1.6); // Koszt rośnie wykładniczo
+                
+                scoreEl.textContent = score;
+                updateUI();
+            }
+        }
+
+        // Aktualizacja interfejsu i dostępności przycisków
+        function updateUI() {
+            // Pasek HP
+            const hpPercent = Math.max(0, (currentHp / maxHp) * 100);
+            hpBar.style.width = `${hpPercent}%`;
+            hpText.textContent = `Poziom ${level} | HP: ${currentHp} / ${maxHp}`;
+
+            // Sklep
+            upgradeCostEl.textContent = upgradeCost;
+            damageValEl.textContent = punchDamage;
+            
+            if (score >= upgradeCost) {
+                upgradeBtn.disabled = false;
+            } else {
+                upgradeBtn.disabled = true;
+            }
+        }
+
+        // Pierwsze uruchomienie w celu zablokowania przycisku ulepszeń
+        updateUI();
+    </script>
+</body>
+</html>
