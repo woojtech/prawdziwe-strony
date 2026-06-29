@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Shift - Neonowy Refleks</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0d0e15;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            border: 2px solid #333;
+            background-color: #151622;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #ui {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        #score {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ffcc;
+        }
+
+        #controls-info {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #888;
+        }
+
+        .btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 12px 24px;
+            font-size: 18px;
+            background: #00ffcc;
+            border: none;
+            color: #000;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.4);
+        }
+
+        .btn:hover {
+            background: #00ccaa;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <div id="score">Wynik: 0</div>
+    </div>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <button id="start-btn" class="btn" onclick="startGame()">START</button>
+    </div>
+
+    <div id="controls-info">
+        Naciśnij <strong>A / D</strong> lub <strong>Strzałki Lewo / Prawo</strong>, aby zmienić kolor kostki.<br>
+        Dopasuj kolor do nadlatujących przeszkód, aby zdobywać punkty!<br><br>
+        <strong>instrukcja: </strong> A / Strzałka w lewo = niebieski, D / Strzałka w prawo = czerwony
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const startBtn = document.getElementById('start-btn');
+
+        const COLORS = {
+            BLUE: '#00d2ff',
+            RED: '#ff0055',
+            BG: '#151622'
+        };
+
+        let playerColor = COLORS.BLUE;
+        let score = 0;
+        let gameActive = false;
+        let obstacles = [];
+        let spawnTimer = 0;
+        let baseSpeed = 2;
+        let spawnInterval = 90; // ramki między spawnem
+
+        const center = { x: 200, y: 200 };
+        const playerSize = 30;
+
+        // Sterowanie
+        window.addEventListener('keydown', (e) => {
+            if (!gameActive) return;
+            if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') {
+                playerColor = COLORS.BLUE;
+            } else if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') {
+                playerColor = COLORS.RED;
+            }
+        });
+
+        function startGame() {
+            score = 0;
+            obstacles = [];
+            baseSpeed = 2;
+            spawnInterval = 90;
+            playerColor = COLORS.BLUE;
+            gameActive = true;
+            scoreElement.innerText = "Wynik: " + score;
+            startBtn.style.display = 'none';
+            gameLoop();
+        }
+
+        function gameOver() {
+            gameActive = false;
+            startBtn.innerText = "Zagraj ponownie";
+            startBtn.style.display = 'block';
+        }
+
+        function spawnObstacle() {
+            // 0: Góra, 1: Prawa, 2: Dół, 3: Lewa
+            const side = Math.floor(Math.random() * 4);
+            const color = Math.random() > 0.5 ? COLORS.BLUE : COLORS.RED;
+            
+            let x, y, vx, vy;
+            const size = 15;
+
+            if (side === 0) { x = center.x; y = 0; vx = 0; vy = baseSpeed; }
+            if (side === 1) { x = 400; y = center.y; vx = -baseSpeed; vy = 0; }
+            if (side === 2) { x = center.x; y = 400; vx = 0; vy = -baseSpeed; }
+            if (side === 3) { x = 0; y = center.y; vx = baseSpeed; vy = 0; }
+
+            obstacles.push({ x, y, vx, vy, color, size, side });
+        }
+
+        function update() {
+            spawnTimer++;
+            if (spawnTimer >= spawnInterval) {
+                spawnObstacle();
+                spawnTimer = 0;
+                // Delikatne podkręcanie trudności
+                if (baseSpeed < 7) baseSpeed += 0.1;
+                if (spawnInterval > 35) spawnInterval -= 1;
+            }
+
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                let obs = obstacles[i];
+                obs.x += obs.vx;
+                obs.y += obs.vy;
+
+                // Sprawdzenie odległości od środka (kolizja)
+                let dist = Math.hypot(obs.x - center.x, obs.y - center.y);
+
+                if (dist <= playerSize / 2 + obs.size / 2) {
+                    if (playerColor === obs.color) {
+                        // Sukces: właściwy kolor
+                        score++;
+                        scoreElement.innerText = "Wynik: " + score;
+                        obstacles.splice(i, 1);
+                    } else {
+                        // Porażka: zły kolor
+                        gameOver();
+                    }
+                }
+            }
+        }
+
+        function draw() {
+            // Czyszczenie ekranu
+            ctx.fillStyle = COLORS.BG;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Linie pomocnicze (celownik)
+            ctx.strokeStyle = '#222436';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(200, 0); ctx.lineTo(200, 400);
+            ctx.moveTo(0, 200); ctx.lineTo(400, 200);
+            ctx.stroke();
+
+            // Rysowanie gracza (środkowy kwadrat)
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = playerColor;
+            ctx.fillStyle = playerColor;
+            ctx.fillRect(center.x - playerSize/2, center.y - playerSize/2, playerSize, playerSize);
+
+            // Rysowanie przeszkód (nadlatujące linie/kwadraty)
+            obstacles.forEach(obs => {
+                ctx.shadowColor = obs.color;
+                ctx.fillStyle = obs.color;
+                
+                // Rysuje podłużny pasek w zależności od kierunku lotu
+                if (obs.vx !== 0) {
+                    ctx.fillRect(obs.x - obs.size, obs.y - 4, obs.size * 2, 8);
+                } else {
+                    ctx.fillRect(obs.x - 4, obs.y - obs.size, 8, obs.size * 2);
+                }
+            });
+
+            // Reset cienia dla wydajności
+            ctx.shadowBlur = 0;
+        }
+
+        function gameLoop() {
+            if (!gameActive) return;
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Pierwsze renderowanie tła przed startem
+        draw();
+    </script>
+</body>
+</html>
